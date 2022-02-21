@@ -172,7 +172,7 @@ void DataObject_PrintDictionary(DataObjectDictionary* dod)
     printf("└-----------------------------------------------\n");
 }
 
-int DataObject_ExportDictionaryCSV(DataObjectDictionary* dod)
+int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str)
 {
     int n_id = dod->occupied;
     uint8_t id_list[n_id];
@@ -181,7 +181,7 @@ int DataObject_ExportDictionaryCSV(DataObjectDictionary* dod)
     }
     qsort(id_list, n_id, sizeof(uint8_t), CompareID);
 
-    char* col_name_str = "ID,Type,Len,Name";
+    char* col_name_str = "ID,Type,Name";
 
     int csv_len = 0;
     int row_len[n_id+1];
@@ -199,23 +199,21 @@ int DataObject_ExportDictionaryCSV(DataObjectDictionary* dod)
     }
     csv_len += 1; // '/0'
 
-
-    char* csv_str = malloc(csv_len);
+    *csv_str = malloc(csv_len);
     int cursor = 0;
 
-    snprintf(csv_str + cursor, row_len[0]+1, "%s\n", col_name_str);
+    snprintf(*csv_str + cursor, row_len[0]+1, "%s\n", col_name_str);
     cursor += row_len[0];
     for (int row = 1; row <= n_id; row++) {
         int idx = FindID(dod->id_table, id_list[row-1]);
-        snprintf(csv_str + cursor, row_len[row]+1, "%d,%d,%s\n",
+        snprintf(*csv_str + cursor, row_len[row]+1, "%d,%d,%s\n",
             dod->obj[idx].id,
             dod->obj[idx].type,
             dod->obj[idx].name
             );
         cursor += row_len[row];
     }
-
-    printf("%s\n", csv_str);
+    return 0;
 }
 
 
