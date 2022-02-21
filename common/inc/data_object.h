@@ -10,7 +10,8 @@
 
 #define DATA_OBJECT_MAX_ITEMS 255
 #define DATA_OBJECT_ID_INDEX 0
-#define DATA_OBJECT_DATA_INDEX 1
+#define DATA_OBJECT_LEN_INDEX 1
+#define DATA_OBJECT_DATA_INDEX 2
 
 
 typedef enum {
@@ -27,7 +28,7 @@ typedef enum {
 typedef struct DataTypeInfo
 {
     char* name;
-    int size;
+    uint8_t size;
 } DataTypeInfoStruct;
 
 
@@ -47,7 +48,6 @@ DataTypeInfoStruct GetDataTypeInfo(DataTypeEnum type)
     }
     return res;
 }
-
 
 static int CompareID(const void* lt, const void* rt)
 {
@@ -71,11 +71,10 @@ typedef struct DataObjectStruct
 {
     uint8_t id;
     DataTypeEnum type;
-    int len;
     char* name;
 
     void* addr;
-    int bytes;
+    uint8_t unit_len;
 } DataObjectStruct;
 
 typedef struct DataObjectDictionary
@@ -87,7 +86,7 @@ typedef struct DataObjectDictionary
 } DataObjectDictionary;
 
 
-void DataObejct_Create(DataObjectDictionary* dod, uint8_t id, DataTypeEnum type, int len, char* name, void* addr)
+void DataObejct_Create(DataObjectDictionary* dod, uint8_t id, DataTypeEnum type, char* name, void* addr)
 {
     if (dod->obj == NULL) {
         dod->capacity = 1;
@@ -113,8 +112,7 @@ void DataObejct_Create(DataObjectDictionary* dod, uint8_t id, DataTypeEnum type,
     uint8_t index = dod->occupied;
     dod->obj[index].id = id;
     dod->obj[index].type = type;
-    dod->obj[index].len = len;
-    dod->obj[index].bytes = GetDataTypeInfo(type).size * len;
+    dod->obj[index].unit_len = GetDataTypeInfo(type).size;
     dod->obj[index].name = (char*)malloc(strlen(name));
     strcpy(dod->obj[index].name, name);
     dod->obj[index].addr = addr;
@@ -122,17 +120,19 @@ void DataObejct_Create(DataObjectDictionary* dod, uint8_t id, DataTypeEnum type,
     dod->occupied++;
 }
 
-void DataObject_Serialize(DataObjectDictionary* dod, uint8_t* byte_arr, uint8_t id)
+void DataObject_Serialize(DataObjectDictionary* dod, uint8_t* byte_arr, uint8_t id, int len)
 {
     int idx = FindID(dod->id_table, id);
     byte_arr[DATA_OBJECT_ID_INDEX] = id;
-    memcpy(&byte_arr[DATA_OBJECT_DATA_INDEX], dod->obj[idx].addr, dod->obj[idx].bytes);
+    byte_arr[DATA_OBJECT_LEN_INDEX] = len;
+    memcpy(&byte_arr[DATA_OBJECT_DATA_INDEX], dod->obj[idx].addr, dod->obj[idx].unit_len*len);
 }
 
-void DataObject_Deserialize(DataObjectDictionary* dod, uint8_t* byte_ar)
+void DataObject_Deserialize(DataObjectDictionary* dod, uint8_t* byte_arr)
 {
-    int idx = FindID(dod->id_table, byte_ar[DATA_OBJECT_ID_INDEX]);
-    memcpy(dod->obj[idx].addr, &byte_ar[DATA_OBJECT_DATA_INDEX], dod->obj[idx].bytes);
+    int idx = FindID(dod->id_table, byte_arr[DATA_OBJECT_ID_INDEX]);
+    int len = byte_arr[DATA_OBJECT_LEN_INDEX];
+    memcpy(dod->obj[idx].addr, &byte_arr[DATA_OBJECT_DATA_INDEX], dod->obj[idx].unit_len*len);
 }
 
 void DataObject_PrintDictionary(DataObjectDictionary* dod)
@@ -149,13 +149,12 @@ void DataObject_PrintDictionary(DataObjectDictionary* dod)
     printf("|Data Object Dictionary\n");
     printf("|Occupied/Capacity: %d/%d\n", n_id, dod->capacity);
     printf("|-----------------------------------------------\n");
-    printf("|Id\t|Type    |Len\t|Name      |Addr\n");
+    printf("|Id\t|Type    |Name      |Addr\n");
     for (int i = 0; i < n_id; i++) {
         int idx = FindID(dod->id_table, id_list[i]);
-        printf("|%02d\t|%-7s |%d\t|%-10s|%p\n",
+        printf("|%02d\t|%-7s |%-10s|%p\n",
             dod->obj[idx].id,
             GetDataTypeInfo(dod->obj[idx].type).name,
-            dod->obj[idx].len,
             dod->obj[idx].name,
             dod->obj[idx].addr
         );
@@ -181,10 +180,9 @@ int DataObject_ExportDictionaryCSV(DataObjectDictionary* dod)
     csv_len += row_len[0];
     for (int row = 1; row <= n_id; row++) {
         int idx = FindID(dod->id_table, id_list[row-1]);
-        row_len[row] = snprintf(NULL, 0, "%d,%d,%d,%s\n",
+        row_len[row] = snprintf(NULL, 0, "%d,%d,%s\n",
                         dod->obj[idx].id,
                         dod->obj[idx].type,
-                        dod->obj[idx].len,
                         dod->obj[idx].name
                         );
         csv_len += row_len[row];
@@ -199,10 +197,9 @@ int DataObject_ExportDictionaryCSV(DataObjectDictionary* dod)
     cursor += row_len[0];
     for (int row = 1; row <= n_id; row++) {
         int idx = FindID(dod->id_table, id_list[row-1]);
-        snprintf(csv_str + cursor, row_len[row]+1, "%d,%d,%d,%s\n",
+        snprintf(csv_str + cursor, row_len[row]+1, "%d,%d,%s\n",
             dod->obj[idx].id,
             dod->obj[idx].type,
-            dod->obj[idx].len,
             dod->obj[idx].name
             );
         cursor += row_len[row];
