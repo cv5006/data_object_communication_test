@@ -96,17 +96,16 @@ void DataObejct_Create(DataObjectDictionary* dod, uint8_t id, DataTypeEnum type,
     }
 
     if (dod->occupied >= dod->capacity) {
-        DataObjectStruct* tmp = (DataObjectStruct*)malloc(sizeof(DataObjectStruct)*dod->occupied);
-        for (int i = 0; i < dod->occupied; i++) {
-            tmp[i] = dod->obj[i];
-        }
+        int occupied_len = sizeof(DataObjectStruct)*dod->occupied;
+        DataObjectStruct* tmp = (DataObjectStruct*)malloc(occupied_len);
+        memcpy(tmp, dod->obj, occupied_len);
         free(dod->obj);
         dod->obj = NULL;
+
         dod->capacity = dod->capacity*2;
-        dod->obj = (DataObjectStruct*)malloc(sizeof(DataObjectStruct)*dod->capacity);
-        for (int i = 0; i < dod->occupied; i++) {
-            dod->obj[i] = tmp[i];
-        }
+        int available_len = sizeof(DataObjectStruct)*dod->capacity;
+        dod->obj = (DataObjectStruct*)malloc(available_len);
+        memcpy(dod->obj, tmp, available_len);
         free(tmp);
         tmp = NULL;
     }
