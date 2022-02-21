@@ -95,16 +95,26 @@ void DataObejct_Create(DataObjectDictionary* dod, uint8_t id, DataTypeEnum type,
     }
 
     if (dod->occupied >= dod->capacity) {
+        // Create temp object array
         int occupied_len = sizeof(DataObjectStruct)*dod->occupied;
         DataObjectStruct* tmp = (DataObjectStruct*)malloc(occupied_len);
+
+        // Copy contents to temp
         memcpy(tmp, dod->obj, occupied_len);
+
+        // Free original object array
         free(dod->obj);
         dod->obj = NULL;
 
+        // Create object array with increased capacity
         dod->capacity = dod->capacity*2;
-        int available_len = sizeof(DataObjectStruct)*dod->capacity;
-        dod->obj = (DataObjectStruct*)malloc(available_len);
-        memcpy(dod->obj, tmp, available_len);
+        int capable_len = sizeof(DataObjectStruct)*dod->capacity;
+        dod->obj = (DataObjectStruct*)malloc(capable_len);
+        
+        // Copy contents to object array with increased capacity
+        memcpy(dod->obj, tmp, occupied_len);
+
+        // Free temp with increased capacity
         free(tmp);
         tmp = NULL;
     }
