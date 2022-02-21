@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "data_object.h": "c",
+        "array": "c",
+        "bitset": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "utility": "c",
+        "thread": "c",
+        "typeinfo": "c"
+    },
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+}
