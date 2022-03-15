@@ -9,6 +9,7 @@ set(CORE
 )
 
 set(COMMON
+    common/src/data_object.c
 )
 
 set(UTILS
@@ -21,6 +22,7 @@ include_directories(utils/inc)
 
 add_executable(main
     ${CORE}
+    ${COMMON}
     ${UTILS}
 )
 

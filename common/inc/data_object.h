@@ -7,12 +7,71 @@
 #include "stdlib.h"
 #include "unistd.h"
 
+#include "cvector.h"
 
-#define DATA_OBJECT_MAX_ITEMS 255
-#define DATA_OBJECT_ID_INDEX 0
-#define DATA_OBJECT_LEN_INDEX 1
-#define DATA_OBJECT_DATA_INDEX 2
+#pragma pack(1)
 
+#define DATA_OBJECT_MAX_ITEMS  255
+
+
+/*
+  ___         _               _ 
+ | _ \_ _ ___| |_ ___  __ ___| |
+ |  _/ '_/ _ \  _/ _ \/ _/ _ \ |
+ |_| |_| \___/\__\___/\__\___/_|
+                                
+
+PDO Packet
++---------+------------------+------+
+|           Header           |      |
++--------+----------+--------+ Data |
+| DOD ID | OBJ Type | OBJ ID |      |
++--------+----------+--------+------+
+| 0      | 1        | 2  3   | 4    |
++--------+----------+--------+------+
+
+SDO Packet
++---------+------------------+--------------+------+
+|           Header           |     Info     |      |
++--------+----------+--------+--------+-----+ Data |
+| DOD ID | OBJ Type | OBJ ID | Result | Len |      |
++--------+----------+--------+--------+-----+------+
+| 0      | 1        | 2  3   | 4      | 5 6 | 7    |
++--------+----------+--------+--------+-----+------+
+
+*/ 
+
+
+#define DATA_OBJECT_TYPE_PDO 0x50
+#define DATA_OBJECT_TYPE_SDO 0x53
+
+
+typedef struct DataObjectHeader
+{
+    uint8_t dod_id;
+    uint8_t obj_type;
+    uint16_t obj_id;
+} DataObjectHeader;
+
+typedef struct PDOPacket
+{
+    uint8_t* data;
+} PDOPacket;
+
+typedef struct SDOPacket
+{
+    int8_t result;
+    uint16_t len;
+    uint8_t* data;
+} SDOPacket;
+
+/*
+  ___       _          _____               
+ |   \ __ _| |_ __ _  |_   _|  _ _ __  ___ 
+ | |) / _` |  _/ _` |   | || || | '_ \/ -_)
+ |___/\__,_|\__\__,_|   |_| \_, | .__/\___|
+                            |__/|_|         
+*/
 
 typedef enum {
     UInt8,
@@ -32,189 +91,86 @@ typedef struct DataTypeInfo
 } DataTypeInfoStruct;
 
 
-DataTypeInfoStruct GetDataTypeInfo(DataTypeEnum type)
-{
-    DataTypeInfoStruct res;
-    switch (type) {
-    case UInt8  : res.name = "uint8"  ; res.size = sizeof(uint8_t);  break;
-    case UInt16 : res.name = "uint16" ; res.size = sizeof(uint16_t); break;
-    case UInt32 : res.name = "uint32" ; res.size = sizeof(uint32_t); break;
-    case Int8   : res.name = "int8"   ; res.size = sizeof(int8_t);   break;
-    case Int16  : res.name = "int16"  ; res.size = sizeof(int16_t);  break;
-    case Int32  : res.name = "int32"  ; res.size = sizeof(int32_t);  break;
-    case Float32: res.name = "float32"; res.size = sizeof(float);    break;
-    case Float64: res.name = "float64"; res.size = sizeof(double);   break;
-    default: break;
-    }
-    return res;
-}
+DataTypeInfoStruct GetDataTypeInfo(DataTypeEnum type);
 
-static int CompareID(const void* lt, const void* rt)
-{
-    return (int)*(uint8_t *)lt - (int)*(uint8_t *)rt;
-}
 
-static int FindID(uint8_t* table, uint8_t id)
-{
-    //TODO: Range check
-    return table[id];
-}
+/*
+  ___              _           __              _   _          
+ / __| ___ _ ___ _(_)__ ___   / _|_  _ _ _  __| |_(_)___ _ _  
+ \__ \/ -_) '_\ V / / _/ -_) |  _| || | ' \/ _|  _| / _ \ ' \ 
+ |___/\___|_|  \_/|_\__\___| |_|  \_,_|_||_\__|\__|_\___/_||_|
+                                                              
+*/
 
-static int AssignID(uint8_t* table, uint8_t id, int index)
+typedef struct SDOargs
 {
-    //TODO: Range & dup check
-    table[id] = index;
-    return 0;
-}
+    int8_t result;
+    void* args;
+    uint16_t size;
+} SDOargs;
 
-typedef struct DataObjectStruct
+typedef void (*SDOcallback) (SDOargs*, SDOargs*);
+
+
+/*
+  ___       _           ___  _     _        _   
+ |   \ __ _| |_ __ _   / _ \| |__ (_)___ __| |_ 
+ | |) / _` |  _/ _` | | (_) | '_ \| / -_) _|  _|
+ |___/\__,_|\__\__,_|  \___/|_.__// \___\__|\__|
+                                |__/            
+*/
+
+typedef struct PDOStruct
 {
-    uint8_t id;
-    DataTypeEnum type;
+    uint16_t id;
     char* name;
 
+    DataTypeEnum type;
+    uint16_t len;
+
     void* addr;
-    uint8_t unit_len;
-} DataObjectStruct;
+    uint16_t bytelen;
+} PDOStruct;
+
+
+typedef struct SDOStruct
+{
+    uint16_t id;
+    char* name;
+
+    DataTypeEnum type;
+    
+    SDOcallback callback;
+} SDOStruct;
+
+
+/*
+  ___       _           ___  _     _        _     ___  _    _   _                        
+ |   \ __ _| |_ __ _   / _ \| |__ (_)___ __| |_  |   \(_)__| |_(_)___ _ _  __ _ _ _ _  _ 
+ | |) / _` |  _/ _` | | (_) | '_ \| / -_) _|  _| | |) | / _|  _| / _ \ ' \/ _` | '_| || |
+ |___/\__,_|\__\__,_|  \___/|_.__// \___\__|\__| |___/|_\__|\__|_\___/_||_\__,_|_|  \_, |
+                                |__/                                                |__/ 
+*/
 
 typedef struct DataObjectDictionary
 {
-    DataObjectStruct* obj;
-    int occupied;
-    int capacity;
-    uint8_t id_table[DATA_OBJECT_MAX_ITEMS];
+    cvector_vector_type(PDOStruct) pdo;
+    cvector_vector_type(SDOStruct) sdo;
 } DataObjectDictionary;
 
+extern cvector_vector_type(DataObjectDictionary*) dods;
 
-void DataObejct_Create(DataObjectDictionary* dod, uint8_t id, DataTypeEnum type, char* name, void* addr)
-{
-    if (dod->obj == NULL) {
-        dod->capacity = 1;
-        dod->occupied = 0;
-        dod->obj = (DataObjectStruct*)malloc(sizeof(DataObjectStruct)*dod->capacity);
-    }
 
-    if (dod->occupied >= dod->capacity) {
-        // Create temp object array
-        int occupied_len = sizeof(DataObjectStruct)*dod->occupied;
-        DataObjectStruct* tmp = (DataObjectStruct*)malloc(occupied_len);
+void DataObejct_CreatePDO(DataObjectDictionary* dod, uint16_t id, char* name, DataTypeEnum type, uint16_t len, void* addr);
+void DataObejct_CreateSDO(DataObjectDictionary* dod, uint16_t id, char* name, DataTypeEnum type, SDOcallback callback);
 
-        // Copy contents to temp
-        memcpy(tmp, dod->obj, occupied_len);
+int DataObject_TxProtocol(uint8_t* byte_arr, uint16_t* byte_len, uint8_t dod_id, uint8_t obj_type, uint16_t obj_id);
+int DataObject_RxProtocol(uint8_t* byte_arr, uint16_t byte_len);
 
-        // Free original object array
-        free(dod->obj);
-        dod->obj = NULL;
+void DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data, uint16_t* len);
+void DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data);
 
-        // Create object array with increased capacity
-        dod->capacity = dod->capacity*2;
-        int capable_len = sizeof(DataObjectStruct)*dod->capacity;
-        dod->obj = (DataObjectStruct*)malloc(capable_len);
-        
-        // Copy contents to object array with increased capacity
-        memcpy(dod->obj, tmp, occupied_len);
-
-        // Free temp with increased capacity
-        free(tmp);
-        tmp = NULL;
-    }
-
-    uint8_t index = dod->occupied;
-    dod->obj[index].id = id;
-    dod->obj[index].type = type;
-    dod->obj[index].unit_len = GetDataTypeInfo(type).size;
-    dod->obj[index].name = (char*)malloc(strlen(name));
-    strcpy(dod->obj[index].name, name);
-    dod->obj[index].addr = addr;
-    AssignID(dod->id_table, id, index);
-    dod->occupied++;
-}
-
-void DataObject_Serialize(DataObjectDictionary* dod, uint8_t* byte_arr, uint8_t id, int len)
-{
-    int idx = FindID(dod->id_table, id);
-    byte_arr[DATA_OBJECT_ID_INDEX] = id;
-    byte_arr[DATA_OBJECT_LEN_INDEX] = len;
-    memcpy(&byte_arr[DATA_OBJECT_DATA_INDEX], dod->obj[idx].addr, dod->obj[idx].unit_len*len);
-}
-
-void DataObject_Deserialize(DataObjectDictionary* dod, uint8_t* byte_arr)
-{
-    int idx = FindID(dod->id_table, byte_arr[DATA_OBJECT_ID_INDEX]);
-    int len = byte_arr[DATA_OBJECT_LEN_INDEX];
-    memcpy(dod->obj[idx].addr, &byte_arr[DATA_OBJECT_DATA_INDEX], dod->obj[idx].unit_len*len);
-}
-
-void DataObject_PrintDictionary(DataObjectDictionary* dod)
-{
-    int n_id = dod->occupied;
-    uint8_t id_list[n_id];
-    for (int i = 0; i < n_id; i++) {
-        id_list[i] = dod->obj[i].id;
-    }
-
-    qsort(id_list, n_id, sizeof(uint8_t), CompareID);
-
-    printf("┌-----------------------------------------------\n");
-    printf("|Data Object Dictionary\n");
-    printf("|Occupied/Capacity: %d/%d\n", n_id, dod->capacity);
-    printf("|-----------------------------------------------\n");
-    printf("|Id\t|Type    |Name      |Addr\n");
-    for (int i = 0; i < n_id; i++) {
-        int idx = FindID(dod->id_table, id_list[i]);
-        printf("|%02d\t|%-7s |%-10s|%p\n",
-            dod->obj[idx].id,
-            GetDataTypeInfo(dod->obj[idx].type).name,
-            dod->obj[idx].name,
-            dod->obj[idx].addr
-        );
-    }
-    printf("└-----------------------------------------------\n");
-}
-
-int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str)
-{
-    int n_id = dod->occupied;
-    uint8_t id_list[n_id];
-    for (int i = 0; i < n_id; i++) {
-        id_list[i] = dod->obj[i].id;
-    }
-    qsort(id_list, n_id, sizeof(uint8_t), CompareID);
-
-    char* col_name_str = "ID,Type,Name";
-
-    int csv_len = 0;
-    int row_len[n_id+1];
-
-    row_len[0] = snprintf(NULL, 0, "%s\n", col_name_str);
-    csv_len += row_len[0];
-    for (int row = 1; row <= n_id; row++) {
-        int idx = FindID(dod->id_table, id_list[row-1]);
-        row_len[row] = snprintf(NULL, 0, "%d,%d,%s\n",
-                        dod->obj[idx].id,
-                        dod->obj[idx].type,
-                        dod->obj[idx].name
-                        );
-        csv_len += row_len[row];
-    }
-    csv_len += 1; // '/0'
-
-    *csv_str = malloc(csv_len);
-    int cursor = 0;
-
-    snprintf(*csv_str + cursor, row_len[0]+1, "%s\n", col_name_str);
-    cursor += row_len[0];
-    for (int row = 1; row <= n_id; row++) {
-        int idx = FindID(dod->id_table, id_list[row-1]);
-        snprintf(*csv_str + cursor, row_len[row]+1, "%d,%d,%s\n",
-            dod->obj[idx].id,
-            dod->obj[idx].type,
-            dod->obj[idx].name
-            );
-        cursor += row_len[row];
-    }
-    return 0;
-}
-
+void DataObject_PrintDictionary(DataObjectDictionary* dod);
+int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str);
 
 #endif // DATA_OBJECT_H_

@@ -7,7 +7,9 @@
         "initializer_list": "c",
         "utility": "c",
         "thread": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "typeindex": "c",
+        "tuple": "c"
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }

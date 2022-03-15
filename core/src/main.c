@@ -1,64 +1,60 @@
 #include "csv_parser.h"
 #include "data_object.h"
 
+#include "cvector.h"
+
+cvector_vector_type(DataObjectDictionary*) dods;
+
+float data[3];
+
+void PrintData(){
+    for (int i = 0; i < 3; ++i) {
+        printf("%.3f, ", data[i]);
+    } printf("\n");
+}
+
+void PrintBuffer(uint8_t* buff, uint16_t len){
+    printf("buffer: \"");
+    for (int i = 0; i < len; ++i) {
+        printf("x%02x/", buff[i]);
+    } printf("\" %dB\n", len);
+}
 
 int main() {
-    DataObjectDictionary dod = {NULL, 0, 1};
+    // Create DOD
+    DataObjectDictionary dict1;
+    cvector_push_back(dods, &dict1);
 
-    uint16_t var1[2] = {1, 2};
-    uint32_t var2 = 0;
-    float var3[4] = {0.0, 0.1, 1.0, 1.1};
+    // Create PDO    
+    DataObejct_CreatePDO(dods[0], 123, "pdo001", Float32, 3, data);
 
-    uint8_t var1_id = 0x2A;
-    uint8_t var2_id = 0x0D;
-    uint8_t var3_id = 0x13;
+    // Set target data
+    data[0] = -1.23;
+    data[1] = 45.6;
+    data[2] = -7.89;
 
-    DataObject_PrintDictionary(&dod);
-    DataObejct_Create(&dod, var1_id, UInt16,  "int16arr", (void*)var1);
-    DataObejct_Create(&dod, var2_id, UInt32,  "int",      (void*)&var2);
-    DataObejct_Create(&dod, var3_id, Float32, "floatarr", (void*)var3);
-    DataObejct_Create(&dod, 125, Float64, "dummy1", NULL);
-    DataObejct_Create(&dod, 99, Int16,   "dummy2", NULL);
-    DataObejct_Create(&dod, 233, Int8,    "dummy3", NULL);
-    DataObject_PrintDictionary(&dod);
-    printf("\n");
+    printf("1. %s target: ", dict1.pdo[0].name);
+    PrintData();
 
-    uint8_t input[20];
+    // Tx PDO
+    uint8_t buff[128];
+    uint16_t len;
     
-    printf("var1\n");
-    printf("Before:\t%d, %d\n", var1[0], var1[1]);
-    var1[0] = 0x1234;
-    var1[1] = 0xABCD;
-    DataObject_Serialize(&dod, input, var1_id, 2);
-    DataObject_Deserialize(&dod, input);
-    printf("After:\t0x%X, 0x%X\n", var1[0], var1[1]);
-    printf("\n");
+    DataObject_TxProtocol(buff, &len, 0, DATA_OBJECT_TYPE_PDO, 123);
+    PrintBuffer(buff, len);
 
-    printf("var2\n");
-    printf("Before:\t%d\n", var2);
-    var2 = 0xA1B2C3D4;
-    DataObject_Serialize(&dod, input, var2_id, 1);
-    DataObject_Deserialize(&dod, input);
-    printf("After:\t0x%X\n", var2);
-    printf("\n");
+    // Reset data
+    data[0] = 0;
+    data[1] = 0;
+    data[2] = 0;
+    printf("2. %s resset: ", dict1.pdo[0].name);
+    PrintData();
 
-    printf("var3\n");
-    printf("Before:\t%.2f, %.2f, %.2f, %.2f\n", var3[0], var3[1], var3[2], var3[3]);
-    var3[0] = 1.23;
-    var3[1] = 4.56;
-    var3[2] = 7.89;
-    var3[3] = 1.01;
-    DataObject_Serialize(&dod, input, var3_id, 4);
-    DataObject_Deserialize(&dod, input);
-    printf("After:\t%.2f, %.2f, %.2f, %.2f\n", var3[0], var3[1], var3[2], var3[3]);
-    printf("\n");
-
-    char* csv_str;
-    DataObject_ExportDictionaryCSVStr(&dod, &csv_str);
-    printf("%size: %dB\n", csv_str, (int)strlen(csv_str));
-
-    FILE* f;
-    f = fopen("data/test.csv", "w+");
-    fprintf(f, "%s", csv_str);
-    fclose(f);
+    // Rx PDO
+    printf("Rx PDO from buffer\n");
+    
+    DataObject_RxProtocol(buff, len);
+        
+    printf("3. %s after rx: ", dict1.pdo[0].name);
+    PrintData();    
 }
