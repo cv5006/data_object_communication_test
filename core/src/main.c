@@ -20,6 +20,26 @@ void PrintBuffer(uint8_t* buff, uint16_t len){
     } printf("\" %dB\n", len);
 }
 
+
+void TestCallback(SDOargs* req, SDOargs* res)
+{
+    printf("SDO Callback Test\n");
+
+    printf("Req args: ");
+    for (int i = 0; i < req->size ; ++i) {
+        printf("%.3f, ", ((float*)(req->data))[i]);
+    } printf("\n");
+
+    printf("Res = Req * 10\n");
+    printf("Res args: ");
+    for (int i = 0; i < req->size ; ++i) {
+        ((float*)(res->data))[i] = ((float*)(req->data))[i] * 10;
+        printf("%.3f, ", ((float*)(res->data))[i]);
+    } printf("\n");
+}
+
+
+
 int main() {
     // Create DOD
     DataObjectDictionary dict1;

@@ -53,17 +53,6 @@ typedef struct DataObjectHeader
     uint16_t obj_id;
 } DataObjectHeader;
 
-typedef struct PDOPacket
-{
-    uint8_t* data;
-} PDOPacket;
-
-typedef struct SDOPacket
-{
-    int8_t result;
-    uint16_t len;
-    uint8_t* data;
-} SDOPacket;
 
 /*
   ___       _          _____               
@@ -95,17 +84,17 @@ DataTypeInfoStruct GetDataTypeInfo(DataTypeEnum type);
 
 
 /*
-  ___              _           __              _   _          
- / __| ___ _ ___ _(_)__ ___   / _|_  _ _ _  __| |_(_)___ _ _  
- \__ \/ -_) '_\ V / / _/ -_) |  _| || | ' \/ _|  _| / _ \ ' \ 
- |___/\___|_|  \_/|_\__\___| |_|  \_,_|_||_\__|\__|_\___/_||_|
-                                                              
+  ___ ___   ___    _                 _ _        
+ / __|   \ / _ \  | |_  __ _ _ _  __| | |___ ___
+ \__ \ |) | (_) | | ' \/ _` | ' \/ _` | / -_|_-<
+ |___/___/ \___/  |_||_\__,_|_||_\__,_|_\___/__/
+                                                
 */
 
 typedef struct SDOargs
 {
     int8_t result;
-    void* args;
+    void* data;
     uint16_t size;
 } SDOargs;
 
@@ -169,6 +158,8 @@ int DataObject_RxProtocol(uint8_t* byte_arr, uint16_t byte_len);
 
 void DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data, uint16_t* len);
 void DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data);
+
+void DataObject_ResponseSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req, SDOargs* res);
 
 void DataObject_PrintDictionary(DataObjectDictionary* dod);
 int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str);

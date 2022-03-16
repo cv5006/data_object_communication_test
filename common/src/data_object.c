@@ -83,28 +83,21 @@ static DataObjectHeader SetHeader(uint8_t* byte_arr, int* byte_len, uint8_t dod_
     *byte_len += len;
 }
 
-static PDOPacket Byte2PDO(uint8_t* byte_arr)
+static uint8_t* Byte2PDOdata(uint8_t* byte_arr)
 {
-    PDOPacket pdo;
-    
-    int idx = (int)sizeof(DataObjectHeader);
-    pdo.data = &byte_arr[idx];
-
-    return pdo;
+    return &byte_arr[sizeof(DataObjectHeader)];
 }
 
-static SDOPacket Byte2SDO(uint8_t* byte_arr)
+static SDOargs Byte2SDOreq(uint8_t* byte_arr)
 {
-    SDOPacket sdo;
-    
-    int idx = (int)sizeof(DataObjectHeader);
-    
-    int size = sizeof(sdo.result) + sizeof(sdo.len);
-    
-    memcpy(&sdo, &byte_arr[idx], size);
-    sdo.data = &byte_arr[idx+size];
+    SDOargs req;    
+    // Result member is not required for request
+    int idx = sizeof(DataObjectHeader) + sizeof(req.result);
+    int len = sizeof(req.size);
+    memcpy(&req.size, &byte_arr[idx], len);
+    req.data = &byte_arr[idx + len];
 
-    return sdo;
+    return req;
 }
 
 
@@ -149,18 +142,15 @@ int DataObject_TxProtocol(uint8_t* byte_arr, uint16_t* byte_len, uint8_t dod_id,
 {
     *byte_len = 0;
 
-    DataObjectHeader header;
-    header.dod_id   = dod_id;
-    header.obj_type = obj_type;
-    header.obj_id   = obj_id;
+    DataObjectHeader header = GetHeader(byte_arr);
+    
     *byte_len += sizeof(DataObjectHeader);
     memcpy(byte_arr, &header, *byte_len);
 
     
     if (obj_type == DATA_OBJECT_TYPE_PDO) {
-        PDOPacket pdo = Byte2PDO(byte_arr);
         uint16_t len = 0;
-        DataObject_PubPDO(dod_id, obj_id, pdo.data, &len);
+        DataObject_PubPDO(dod_id, obj_id, Byte2PDOdata(byte_arr), &len);
         *byte_len += len;
         return 0;
     }
@@ -170,21 +160,22 @@ int DataObject_TxProtocol(uint8_t* byte_arr, uint16_t* byte_len, uint8_t dod_id,
     }
 
     return -1;
-    
 }
 
 int DataObject_RxProtocol(uint8_t* byte_arr, uint16_t byte_len)
 {
     DataObjectHeader header = GetHeader(byte_arr);
     
-
     if (header.obj_type == DATA_OBJECT_TYPE_PDO) {
-        PDOPacket pdo = Byte2PDO(byte_arr);
-        DataObject_SubPDO(header.dod_id, header.obj_id, pdo.data);
+        DataObject_SubPDO(header.dod_id, header.obj_id, Byte2PDOdata(byte_arr));
         return 0;
     }
 
     if (header.obj_type == DATA_OBJECT_TYPE_SDO) {
+        SDOargs req, res;
+        req = Byte2SDOreq(byte_arr);
+        DataObject_ResponseSDO(header.dod_id, header.obj_id, &req, &res);
+
         return 0;
     }
 
@@ -210,11 +201,11 @@ void DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data)
 }
 
 
-void DataObject_UnpackPDO(DataObjectDictionary* dod, uint8_t* byte_arr)
+void DataObject_ResponseSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req, SDOargs* res)
 {
-    // int idx = FindID(dod->id_table, byte_arr[DATA_OBJECT_ID_INDEX]);
-    // int len = byte_arr[DATA_OBJECT_LEN_INDEX];
-    // memcpy(dod->obj[idx].addr, &byte_arr[DATA_OBJECT_DATA_INDEX], dod->obj[idx].unit_len*len);
+    DataObjectDictionary* dod = dods[dod_id];
+    SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
+    sdo->callback(req, res);
 }
 
 
