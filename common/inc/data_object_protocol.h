@@ -33,24 +33,29 @@ SDO Packet
 */ 
 
 
-#define DATA_OBJECT_TYPE_PDO 0x50
-#define DATA_OBJECT_TYPE_SDO 0x53
+#define DATA_OBJECT_CHAR_PDO 0x50
+#define DATA_OBJECT_CHAR_SDO 0x53
+
+#define DATA_OBJECT_OBJ_CHAR_SIZE 1
+#define DATA_OBJECT_OBJNUMS__SIZE 1
 
 typedef struct DataObjectHeader
 {
     uint8_t dod_id;
-    uint8_t obj_type;
     uint16_t obj_id;
 } DataObjectHeader;
 
-cvector_vector_type(DataObjectHeader*) pdos_to_pub;
-cvector_vector_type(DataObjectHeader*) sdos_to_res;
+cvector_vector_type(DataObjectHeader) pdos_to_pub;
+cvector_vector_type(DataObjectHeader) sdos_to_res;
 
 
 // TxRx Protocols
-int DataObject_TxProtocol(uint8_t* byte_arr, uint16_t* byte_len, uint8_t dod_id, uint8_t obj_type, uint16_t obj_id);
+int DataObject_TxProtocol(uint8_t* byte_arr, uint16_t* byte_len);
 
 int DataObject_RxProtocol(uint8_t* byte_arr, uint16_t byte_len);
+
+
+
 
 
 #endif // DATA_OBJECT_PROTOCOL_H_

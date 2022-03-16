@@ -71,7 +71,7 @@ int main() {
     uint16_t len;
     
     // DataObject_TxProtocol(buff, &len, 0, DATA_OBJECT_TYPE_PDO, obj_id);
-    DataObject_PubPDO(dod_id, obj_id, buff, &len);
+    len = DataObject_PubPDO(dod_id, obj_id, (void*)buff);
     
     PrintBuffer(buff, len);
 
@@ -86,7 +86,7 @@ int main() {
     printf("Rx PDO from buffer\n");
     
     // DataObject_RxProtocol(buff, len);
-    DataObject_SubPDO(dod_id, obj_id, buff);
+    len = DataObject_SubPDO(dod_id, obj_id, (void*)buff);
         
     printf("3. %s after rx: ", dods[dod_id]->pdo[dod_id].name);
     PrintData(data, N);

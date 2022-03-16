@@ -120,28 +120,41 @@ void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeE
 
 
 // PDO Pub & Sub
-void DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data, uint16_t* len)
+uint16_t DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, void* data)
 {
     DataObjectDictionary* dod = dods[dod_id];
     PDOStruct* pdo = &dod->pdo[FindPDO(dod, obj_id)];
     memcpy(data, pdo->addr, pdo->bytelen);
-    *len = pdo->bytelen;
+    return pdo->bytelen;
 }
 
 
-void DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data)
+uint16_t DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, void* data)
 {
     DataObjectDictionary* dod = dods[dod_id];
     PDOStruct* pdo = &dod->pdo[FindPDO(dod, obj_id)];
     memcpy(pdo->addr, data, pdo->bytelen);
+    return pdo->bytelen;
 }
 
 // SDO call
-void DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
+uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
 {
     DataObjectDictionary* dod = dods[dod_id];
     SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
     sdo->callback(req, &sdo->response);
+    return sdo->response.size * GetDataTypeInfo(sdo->type).size;
+}
+
+SDOargs DataObject_GetSDOReponse(uint8_t dod_id, uint16_t obj_id)
+{
+    DataObjectDictionary* dod = dods[dod_id];
+    SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
+    
+    SDOargs res;
+    res.result = sdo->response.result;
+    res.size   = sdo->response.size;
+    res.data   = sdo->response.data;
 }
 
 

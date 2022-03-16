@@ -115,11 +115,11 @@ void DataObejct_CreateDOD(uint8_t dod_id);
 void DataObejct_CreatePDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, uint16_t len, void* addr);
 void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, SDOcallback callback);
 
-void DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data, uint16_t* len);
-void DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data);
+uint16_t DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, void* data);
+uint16_t DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, void* data);
 
-void DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req);
-
+uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req);
+SDOargs DataObject_GetSDOReponse(uint8_t dod_id, uint16_t obj_id);
 
 void DataObject_PrintDictionary(DataObjectDictionary* dod);
 int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str);
