@@ -89,6 +89,8 @@ int DataObject_TxProtocol(uint8_t* byte_arr, uint16_t* byte_len)
         memcpy(&byte_arr[cursor], &res.size,   sizeof(res.size));   cursor += sizeof(res.size);
         memcpy(&byte_arr[cursor], &res.data,   res.size);           cursor += res.size;
     }
+
+    *byte_len = cursor;
 }
 
 int DataObject_RxProtocol(uint8_t* byte_arr, uint16_t byte_len)
