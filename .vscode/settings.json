@@ -9,7 +9,8 @@
         "thread": "c",
         "typeinfo": "c",
         "typeindex": "c",
-        "tuple": "c"
+        "tuple": "c",
+        "string": "c"
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }

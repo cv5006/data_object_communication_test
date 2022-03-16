@@ -10,6 +10,7 @@ set(CORE
 
 set(COMMON
     common/src/data_object.c
+    common/src/data_object_protocol.c
 )
 
 set(UTILS

@@ -63,43 +63,6 @@ static int FindSDO(DataObjectDictionary* dod, uint16_t id)
     return -1;
 }
 
-static DataObjectHeader GetHeader(uint8_t* byte_arr)
-{
-    DataObjectHeader header;
-    memcpy(&header, byte_arr, sizeof(DataObjectHeader));
-    // TODO: Header validation
-}
-
-static DataObjectHeader SetHeader(uint8_t* byte_arr, int* byte_len, uint8_t dod_id, uint8_t obj_type, uint16_t obj_id)
-{
-    // TODO: Header validation
-    DataObjectHeader header;
-    header.dod_id   = dod_id;
-    header.obj_type = obj_type;
-    header.obj_id   = obj_id;
-
-    int len =sizeof(DataObjectHeader);
-    memcpy(byte_arr, &header, len);
-    *byte_len += len;
-}
-
-static uint8_t* Byte2PDOdata(uint8_t* byte_arr)
-{
-    return &byte_arr[sizeof(DataObjectHeader)];
-}
-
-static SDOargs Byte2SDOreq(uint8_t* byte_arr)
-{
-    SDOargs req;    
-    // Result member is not required for request
-    int idx = sizeof(DataObjectHeader) + sizeof(req.result);
-    int len = sizeof(req.size);
-    memcpy(&req.size, &byte_arr[idx], len);
-    req.data = &byte_arr[idx + len];
-
-    return req;
-}
-
 
 /*
   ___       _           ___  _     _        _     ___  _    _   _                        
@@ -109,13 +72,27 @@ static SDOargs Byte2SDOreq(uint8_t* byte_arr)
                                 |__/                                                |__/ 
 */
 
-// Create Data Object
-void DataObejct_CreatePDO(DataObjectDictionary* dod, uint16_t id, char* name, DataTypeEnum type, uint16_t len, void* addr)
+// Create Data Object & Dictionary
+void DataObejct_CreateDOD(uint8_t dod_id)
 {
+    DataObjectDictionary* dod = (DataObjectDictionary*)malloc(sizeof(DataObjectDictionary));
+    dod->pdo = NULL;
+    dod->sdo = NULL;
+
+    if (cvector_size(dods) <= dod_id) {
+        cvector_reserve(dods, dod_id + 1);
+    }
+    dods[dod_id] = dod;
+}
+
+
+void DataObejct_CreatePDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, uint16_t len, void* addr)
+{
+    DataObjectDictionary* dod = dods[dod_id];
     PDOStruct new_pdo;
 
-    new_pdo.id   = id;
-    new_pdo.name = (char*)malloc(strlen(name)); strcpy(new_pdo.name, name);
+    new_pdo.id   = obj_id;
+    new_pdo.name = (char*)malloc(strlen(name)+1); strcpy(new_pdo.name, name);
     new_pdo.type = type;
     new_pdo.len  = len;
     new_pdo.addr = addr;
@@ -125,65 +102,24 @@ void DataObejct_CreatePDO(DataObjectDictionary* dod, uint16_t id, char* name, Da
     cvector_push_back(dod->pdo, new_pdo);
 }
 
-void DataObejct_CreateSDO(DataObjectDictionary* dod, uint16_t id, char* name, DataTypeEnum type, SDOcallback callback)
+void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, SDOcallback callback)
 {
+    DataObjectDictionary* dod = dods[dod_id];
     SDOStruct new_sdo;
 
-    new_sdo.id   = id;
-    new_sdo.name = (char*)malloc(strlen(name)); strcpy(new_sdo.name, name);
-    new_sdo.type = type;
-    new_sdo.callback = callback;
+    new_sdo.id          = obj_id;
+    new_sdo.name        = (char*)malloc(strlen(name)+1); strcpy(new_sdo.name, name);
+    new_sdo.type        = type;
+    new_sdo.callback    = callback;
+    new_sdo.response.result = 0;
+    new_sdo.response.size   = 0;
+    new_sdo.response.data   = NULL;
 
     cvector_push_back(dod->sdo, new_sdo);
 }
 
-// TxRx Protocols
-int DataObject_TxProtocol(uint8_t* byte_arr, uint16_t* byte_len, uint8_t dod_id, uint8_t obj_type, uint16_t obj_id)
-{
-    *byte_len = 0;
 
-    DataObjectHeader header = GetHeader(byte_arr);
-    
-    *byte_len += sizeof(DataObjectHeader);
-    memcpy(byte_arr, &header, *byte_len);
-
-    
-    if (obj_type == DATA_OBJECT_TYPE_PDO) {
-        uint16_t len = 0;
-        DataObject_PubPDO(dod_id, obj_id, Byte2PDOdata(byte_arr), &len);
-        *byte_len += len;
-        return 0;
-    }
-
-    if (obj_type == DATA_OBJECT_TYPE_SDO) {
-        return 0;
-    }
-
-    return -1;
-}
-
-int DataObject_RxProtocol(uint8_t* byte_arr, uint16_t byte_len)
-{
-    DataObjectHeader header = GetHeader(byte_arr);
-    
-    if (header.obj_type == DATA_OBJECT_TYPE_PDO) {
-        DataObject_SubPDO(header.dod_id, header.obj_id, Byte2PDOdata(byte_arr));
-        return 0;
-    }
-
-    if (header.obj_type == DATA_OBJECT_TYPE_SDO) {
-        SDOargs req, res;
-        req = Byte2SDOreq(byte_arr);
-        DataObject_ResponseSDO(header.dod_id, header.obj_id, &req, &res);
-
-        return 0;
-    }
-
-    return -1;
-}
-
-
-// PDO PubSub
+// PDO Pub & Sub
 void DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data, uint16_t* len)
 {
     DataObjectDictionary* dod = dods[dod_id];
@@ -200,12 +136,12 @@ void DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data)
     memcpy(pdo->addr, data, pdo->bytelen);
 }
 
-
-void DataObject_ResponseSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req, SDOargs* res)
+// SDO call
+void DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
 {
     DataObjectDictionary* dod = dods[dod_id];
     SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
-    sdo->callback(req, res);
+    sdo->callback(req, &sdo->response);
 }
 
 
@@ -279,4 +215,40 @@ int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str)
     //     cursor += row_len[row];
     // }
     // return 0;
+}
+
+
+
+void DataObject_FreePDO(uint8_t dod_id)
+{
+    DataObjectDictionary* dod = dods[dod_id];
+    for (int i = 0; i < cvector_size(dod->pdo); ++i) {
+        if (dod->pdo[i].name) {
+            free(dod->pdo[i].name);
+            dod->pdo[i].name = NULL;
+        }
+    }
+    cvector_free(dod->pdo);
+}
+
+void DataObject_FreeSDO(uint8_t dod_id)
+{
+    DataObjectDictionary* dod = dods[dod_id];
+    for (int i = 0; i < cvector_size(dod->sdo); ++i) {
+        if (dod->sdo[i].name != NULL) {
+            free(dod->sdo[i].name);
+            dod->sdo[i].name = NULL;
+        }
+
+        if (dod->sdo[i].response.data != NULL) {
+            free(dod->sdo[i].response.data);
+            dod->sdo[i].response.data = NULL;
+        }
+    }
+    cvector_free(dod->sdo);
+}
+
+void DataObject_FreeDOD()
+{
+    cvector_free(dods);
 }

@@ -15,46 +15,6 @@
 
 
 /*
-  ___         _               _ 
- | _ \_ _ ___| |_ ___  __ ___| |
- |  _/ '_/ _ \  _/ _ \/ _/ _ \ |
- |_| |_| \___/\__\___/\__\___/_|
-                                
-
-PDO Packet
-+---------+------------------+------+
-|           Header           |      |
-+--------+----------+--------+ Data |
-| DOD ID | OBJ Type | OBJ ID |      |
-+--------+----------+--------+------+
-| 0      | 1        | 2  3   | 4    |
-+--------+----------+--------+------+
-
-SDO Packet
-+---------+------------------+--------------+------+
-|           Header           |     Info     |      |
-+--------+----------+--------+--------+-----+ Data |
-| DOD ID | OBJ Type | OBJ ID | Result | Len |      |
-+--------+----------+--------+--------+-----+------+
-| 0      | 1        | 2  3   | 4      | 5 6 | 7    |
-+--------+----------+--------+--------+-----+------+
-
-*/ 
-
-
-#define DATA_OBJECT_TYPE_PDO 0x50
-#define DATA_OBJECT_TYPE_SDO 0x53
-
-
-typedef struct DataObjectHeader
-{
-    uint8_t dod_id;
-    uint8_t obj_type;
-    uint16_t obj_id;
-} DataObjectHeader;
-
-
-/*
   ___       _          _____               
  |   \ __ _| |_ __ _  |_   _|  _ _ __  ___ 
  | |) / _` |  _/ _` |   | || || | '_ \/ -_)
@@ -130,6 +90,7 @@ typedef struct SDOStruct
     DataTypeEnum type;
     
     SDOcallback callback;
+    SDOargs response;
 } SDOStruct;
 
 
@@ -150,18 +111,22 @@ typedef struct DataObjectDictionary
 extern cvector_vector_type(DataObjectDictionary*) dods;
 
 
-void DataObejct_CreatePDO(DataObjectDictionary* dod, uint16_t id, char* name, DataTypeEnum type, uint16_t len, void* addr);
-void DataObejct_CreateSDO(DataObjectDictionary* dod, uint16_t id, char* name, DataTypeEnum type, SDOcallback callback);
-
-int DataObject_TxProtocol(uint8_t* byte_arr, uint16_t* byte_len, uint8_t dod_id, uint8_t obj_type, uint16_t obj_id);
-int DataObject_RxProtocol(uint8_t* byte_arr, uint16_t byte_len);
+void DataObejct_CreateDOD(uint8_t dod_id);
+void DataObejct_CreatePDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, uint16_t len, void* addr);
+void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, SDOcallback callback);
 
 void DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data, uint16_t* len);
 void DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, uint8_t* data);
 
-void DataObject_ResponseSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req, SDOargs* res);
+void DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req);
+
 
 void DataObject_PrintDictionary(DataObjectDictionary* dod);
 int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str);
+
+
+void DataObject_FreePDO(uint8_t dod_id);
+void DataObject_FreeSDO(uint8_t dod_id);
+void DataObject_FreeDOD();
 
 #endif // DATA_OBJECT_H_
