@@ -78,6 +78,7 @@ typedef struct PDOStruct
     uint16_t len;
 
     void* addr;
+    void* last_pub;
     uint16_t bytelen;
 } PDOStruct;
 
@@ -108,9 +109,6 @@ typedef struct DataObjectDictionary
     cvector_vector_type(SDOStruct) sdo;
 } DataObjectDictionary;
 
-extern cvector_vector_type(DataObjectDictionary*) dods;
-
-
 void DataObejct_CreateDOD(uint8_t dod_id);
 void DataObejct_CreatePDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, uint16_t len, void* addr);
 void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, SDOcallback callback);
@@ -119,14 +117,12 @@ uint16_t DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, void* data);
 uint16_t DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, void* data);
 
 uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req);
-SDOargs DataObject_GetSDOReponse(uint8_t dod_id, uint16_t obj_id);
+SDOargs DataObject_PopSDOReponse(uint8_t dod_id, uint16_t obj_id);
 
 void DataObject_PrintDictionary(DataObjectDictionary* dod);
 int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str);
 
 
-void DataObject_FreePDO(uint8_t dod_id);
-void DataObject_FreeSDO(uint8_t dod_id);
-void DataObject_FreeDOD();
+void DataObject_FreeDODs();
 
 #endif // DATA_OBJECT_H_

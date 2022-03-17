@@ -22,9 +22,9 @@ void PrintBuffer(uint8_t* buff, uint16_t len){
 }
 
 
-void CopyReq(SDOargs* req, SDOargs* res)
+void Float_x10(SDOargs* req, SDOargs* res)
 {    
-    printf("SDO Callback Test\n");
+    printf("Float_x10 Callback\n");
 
     printf("Req args: ");
     for (int i = 0; i < req->size ; ++i) {
@@ -43,19 +43,42 @@ void CopyReq(SDOargs* req, SDOargs* res)
 
 }
 
+void RepeatReq(SDOargs* req, SDOargs* res)
+{    
+    printf("RepeatReq Callback\n");
 
+    printf("Req args: ");
+    for (int i = 0; i < req->size ; ++i) {
+        printf("%.3f, ", ((float*)(req->data))[i]);
+    } printf("\n");
 
-int main() {
+    res->size = req->size * 2;
+    res->data = malloc(sizeof(float)* res->size);
+
+    printf("Res = Req, Req\n");
+    printf("Res args: ");
+    memcpy((float*)res->data,               (float*)req->data, req->size);
+    memcpy((float*)(res->data) + req->size, (float*)req->data, req->size);
+    for (int i = 0; i < req->size ; ++i) {
+        printf("%.3f, ", ((float*)res->data)[i]);
+    } printf("\n");
+}
+
+void DataObjectTest()
+{
+    printf("*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*\n");
+    printf("*.*.*.*.*. Data Object Test! .*.*.*.*\n");
+    printf("*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*\n");
+
     uint8_t dod_id = 0;
     uint8_t obj_id = 123;
-    cvector_reserve(dods, 2);
 
     // Create DOD
     DataObejct_CreateDOD(dod_id);
 
     /* PDO Test */
 
-    // Create PDO    
+    // Create PDO
     DataObejct_CreatePDO(dod_id, obj_id, "pdo1", Float32, 3, data);
 
     // Set target data
@@ -95,7 +118,7 @@ int main() {
     /* SDO Test */
     
     // Create SDO
-    DataObejct_CreateSDO(dod_id, obj_id, "copy", Float32, CopyReq);
+    DataObejct_CreateSDO(dod_id, obj_id, "copy", Float32, Float_x10);
 
 
     SDOargs req;
@@ -111,7 +134,47 @@ int main() {
     free(dods[dod_id]->sdo[0].response.data);
     dods[dod_id]->sdo[0].response.data = NULL;
 
-    DataObject_FreePDO(dod_id);
-    DataObject_FreeSDO(dod_id);
-    DataObject_FreeDOD();
+    DataObject_FreeDODs();
+    
+    printf("\n");
+}
+
+
+void DOPTest()
+{
+    printf("*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*\n");
+    printf("*.*.*.*.*. Protocol Test .*.*.*.*\n");
+    printf("*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*\n");
+
+    uint8_t dod1 = 0, dod2 = 1;
+    uint16_t pdo1_1 = 123, pdo1_2 = 456, pdo2_1 = 123;
+    uint16_t sdo2_1 = 11, sdo2_2 = 22;
+
+    float float_1 = 0;
+    int16_t int16_2[2] = {0, 0};
+    float flaot_3[3] = {0, 0, 0};
+
+    // Create DODs
+    DataObejct_CreateDOD(dod1);
+    DataObejct_CreatePDO(dod1, pdo1_1, "pdo 1-1", Float32, 1, &float_1);
+    DataObejct_CreatePDO(dod1, pdo1_2, "pdo 1-2", Int16, 2, int16_2);
+
+    DataObejct_CreateDOD(dod2);
+    DataObejct_CreatePDO(dod2, pdo2_1, "pdo 2-1",   Float32, 3, &flaot_3);
+    DataObejct_CreateSDO(dod2, sdo2_1, "float x10", Float32, Float_x10);
+    DataObejct_CreateSDO(dod2, sdo2_2, "rep req",   Float32, RepeatReq);
+
+  
+
+    // Free DODs
+    DataObject_FreeDODs();
+
+    printf("\n");
+}
+
+
+
+int main() {
+    // DataObjectTest();
+    DOPTest();
 }

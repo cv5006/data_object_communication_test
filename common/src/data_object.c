@@ -1,6 +1,7 @@
 #include "data_object.h"
 
-cvector_vector_type(DataObjectDictionary*) dods;
+DataObjectDictionary** dods;
+int dods_size;
 
 
 DataTypeInfoStruct GetDataTypeInfo(DataTypeEnum type)
@@ -75,12 +76,18 @@ static int FindSDO(DataObjectDictionary* dod, uint16_t id)
 // Create Data Object & Dictionary
 void DataObejct_CreateDOD(uint8_t dod_id)
 {
+    if (dods_size <= 0) {
+        dods = (DataObjectDictionary**)malloc(sizeof(DataObjectDictionary*));
+        dods_size = 1;
+    }
+
     DataObjectDictionary* dod = (DataObjectDictionary*)malloc(sizeof(DataObjectDictionary));
     dod->pdo = NULL;
     dod->sdo = NULL;
 
-    if (cvector_size(dods) <= dod_id) {
-        cvector_reserve(dods, dod_id + 1);
+    if (dods_size <= dod_id) {
+        dods_size = dod_id + 1;
+        dods = realloc(dods, sizeof(DataObjectDictionary)*dods_size);
     }
     dods[dod_id] = dod;
 }
@@ -97,7 +104,10 @@ void DataObejct_CreatePDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeE
     new_pdo.len  = len;
     new_pdo.addr = addr;
 
-    new_pdo.bytelen = GetDataTypeInfo(type).size * len;
+    new_pdo.bytelen  = GetDataTypeInfo(type).size * len;
+    new_pdo.last_pub = malloc(new_pdo.bytelen);
+
+    memset(new_pdo.last_pub, 0xFF, new_pdo.bytelen);
 
     cvector_push_back(dod->pdo, new_pdo);
 }
@@ -107,10 +117,11 @@ void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeE
     DataObjectDictionary* dod = dods[dod_id];
     SDOStruct new_sdo;
 
-    new_sdo.id          = obj_id;
-    new_sdo.name        = (char*)malloc(strlen(name)+1); strcpy(new_sdo.name, name);
-    new_sdo.type        = type;
-    new_sdo.callback    = callback;
+    new_sdo.id       = obj_id;
+    new_sdo.name     = (char*)malloc(strlen(name)+1); strcpy(new_sdo.name, name);
+    new_sdo.type     = type;
+    new_sdo.callback = callback;
+
     new_sdo.response.result = 0;
     new_sdo.response.size   = 0;
     new_sdo.response.data   = NULL;
@@ -121,10 +132,17 @@ void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeE
 
 // PDO Pub & Sub
 uint16_t DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, void* data)
-{
+{    
     DataObjectDictionary* dod = dods[dod_id];
     PDOStruct* pdo = &dod->pdo[FindPDO(dod, obj_id)];
+
+    if (memcmp(pdo->addr, pdo->last_pub, pdo->bytelen) == 0) {
+        // No Pub if data is same with last published one
+        return 0;
+    }
+
     memcpy(data, pdo->addr, pdo->bytelen);
+    memcpy(pdo->last_pub, pdo->addr, pdo->bytelen);
     return pdo->bytelen;
 }
 
@@ -137,6 +155,7 @@ uint16_t DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, void* data)
     return pdo->bytelen;
 }
 
+
 // SDO call
 uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
 {
@@ -146,7 +165,7 @@ uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
     return sdo->response.size * GetDataTypeInfo(sdo->type).size;
 }
 
-SDOargs DataObject_GetSDOReponse(uint8_t dod_id, uint16_t obj_id)
+SDOargs DataObject_PopSDOReponse(uint8_t dod_id, uint16_t obj_id)
 {
     DataObjectDictionary* dod = dods[dod_id];
     SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
@@ -155,6 +174,13 @@ SDOargs DataObject_GetSDOReponse(uint8_t dod_id, uint16_t obj_id)
     res.result = sdo->response.result;
     res.size   = sdo->response.size;
     res.data   = sdo->response.data;
+    
+    sdo->response.result = 0;
+    sdo->response.size = 0;
+    free(sdo->response.data);
+    sdo->response.data = NULL;
+
+    return res;
 }
 
 
@@ -232,7 +258,7 @@ int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str)
 
 
 
-void DataObject_FreePDO(uint8_t dod_id)
+static void DataObject_FreePDO(uint8_t dod_id)
 {
     DataObjectDictionary* dod = dods[dod_id];
     for (int i = 0; i < cvector_size(dod->pdo); ++i) {
@@ -240,11 +266,16 @@ void DataObject_FreePDO(uint8_t dod_id)
             free(dod->pdo[i].name);
             dod->pdo[i].name = NULL;
         }
+
+        if (dod->pdo[i].last_pub) {
+            free(dod->pdo[i].last_pub);
+            dod->pdo[i].last_pub = NULL;
+        }     
     }
     cvector_free(dod->pdo);
 }
 
-void DataObject_FreeSDO(uint8_t dod_id)
+static void DataObject_FreeSDO(uint8_t dod_id)
 {
     DataObjectDictionary* dod = dods[dod_id];
     for (int i = 0; i < cvector_size(dod->sdo); ++i) {
@@ -261,7 +292,15 @@ void DataObject_FreeSDO(uint8_t dod_id)
     cvector_free(dod->sdo);
 }
 
-void DataObject_FreeDOD()
+void DataObject_FreeDODs()
 {
-    cvector_free(dods);
+    for (int i = 0; i < dods_size; ++i) {
+        if (dods[i] != NULL) {
+            DataObject_FreePDO(i);
+            DataObject_FreeSDO(i);
+            free(dods[i]);
+            dods[i] = NULL;
+        }
+    }
+    free(dods);
 }
