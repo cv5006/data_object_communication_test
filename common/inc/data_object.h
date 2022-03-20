@@ -11,9 +11,6 @@
 
 #pragma pack(1)
 
-#define DATA_OBJECT_MAX_ITEMS  255
-
-
 /*
   ___       _          _____               
  |   \ __ _| |_ __ _  |_   _|  _ _ __  ___ 
@@ -51,11 +48,17 @@ DataTypeInfoStruct GetDataTypeInfo(DataTypeEnum type);
                                                 
 */
 
+#define DATA_OBJECT_SDO_IDLE  2
+#define DATA_OBJECT_SDO_REQU  1
+#define DATA_OBJECT_SDO_SUCC  0
+#define DATA_OBJECT_SDO_FAIL -1
+
 typedef struct SDOargs
 {
-    int8_t result;
+    int8_t status;
     void* data;
     uint16_t size;
+    uint16_t data_size;
 } SDOargs;
 
 typedef void (*SDOcallback) (SDOargs*, SDOargs*);
@@ -91,7 +94,7 @@ typedef struct SDOStruct
     DataTypeEnum type;
     
     SDOcallback callback;
-    SDOargs response;
+    SDOargs args;
 } SDOStruct;
 
 
@@ -117,7 +120,8 @@ uint16_t DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, void* data);
 uint16_t DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, void* data);
 
 uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req);
-SDOargs DataObject_PopSDOReponse(uint8_t dod_id, uint16_t obj_id);
+uint16_t DataObejct_SetSDOargs(uint8_t dod_id, uint16_t obj_id, SDOargs* req);
+SDOargs DataObject_GetSDOargs(uint8_t dod_id, uint16_t obj_id);
 
 void DataObject_PrintDictionary(DataObjectDictionary* dod);
 int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str);

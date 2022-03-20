@@ -48,12 +48,8 @@ typedef struct DOP_Header
 
 
 // TxRx Protocols
-int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len);
+int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len, DOP_Header* pdos, int n_pdos, DOP_Header* sdos, int n_sdos);
 int DOP_Rx(uint8_t* byte_arr, uint16_t byte_len);
-
-int DOP_PDOSyncStart(uint8_t dod_id, uint16_t obj_id);
-int DOP_PDOSyncClear();
-
 
 
 #endif // DATA_OBJECT_PROTOCOL_H_

@@ -117,14 +117,15 @@ void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeE
     DataObjectDictionary* dod = dods[dod_id];
     SDOStruct new_sdo;
 
-    new_sdo.id       = obj_id;
-    new_sdo.name     = (char*)malloc(strlen(name)+1); strcpy(new_sdo.name, name);
-    new_sdo.type     = type;
-    new_sdo.callback = callback;
+    new_sdo.id        = obj_id;
+    new_sdo.name      = (char*)malloc(strlen(name)+1); strcpy(new_sdo.name, name);
+    new_sdo.type      = type;
+    new_sdo.callback  = callback;
 
-    new_sdo.response.result = 0;
-    new_sdo.response.size   = 0;
-    new_sdo.response.data   = NULL;
+    new_sdo.args.status = DATA_OBJECT_SDO_IDLE;
+    new_sdo.args.size   = 0;
+    new_sdo.args.data   = NULL;
+    new_sdo.args.data_size = GetDataTypeInfo(type).size;
 
     cvector_push_back(dod->sdo, new_sdo);
 }
@@ -161,24 +162,43 @@ uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
 {
     DataObjectDictionary* dod = dods[dod_id];
     SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
-    sdo->callback(req, &sdo->response);
-    return sdo->response.size * GetDataTypeInfo(sdo->type).size;
+    if (sdo->args.data != NULL) {
+        free(sdo->args.data);
+    }
+    sdo->args.status = DATA_OBJECT_SDO_IDLE;
+    sdo->callback(req, &sdo->args);
+    return sdo->args.size * sdo->args.data_size;
 }
 
-SDOargs DataObject_PopSDOReponse(uint8_t dod_id, uint16_t obj_id)
+uint16_t DataObejct_SetSDOargs(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
+{
+    DataObjectDictionary* dod = dods[dod_id];
+    SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
+
+    sdo->args.status = req->status;
+
+    if (sdo->args.data != NULL) {
+        free(sdo->args.data);
+    }
+    int total_size = sdo->args.data_size * req->size;
+    sdo->args.data = malloc(total_size);
+    memcpy(sdo->args.data, req->data, total_size);
+    sdo->args.size = req->size;
+
+    return total_size;
+}
+
+
+SDOargs DataObject_GetSDOargs(uint8_t dod_id, uint16_t obj_id)
 {
     DataObjectDictionary* dod = dods[dod_id];
     SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
     
     SDOargs res;
-    res.result = sdo->response.result;
-    res.size   = sdo->response.size;
-    res.data   = sdo->response.data;
-    
-    sdo->response.result = 0;
-    sdo->response.size = 0;
-    free(sdo->response.data);
-    sdo->response.data = NULL;
+    res.status    = sdo->args.status;
+    res.size      = sdo->args.size;
+    res.data      = sdo->args.data;
+    res.data_size = sdo->args.data_size;
 
     return res;
 }
@@ -284,9 +304,9 @@ static void DataObject_FreeSDO(uint8_t dod_id)
             dod->sdo[i].name = NULL;
         }
 
-        if (dod->sdo[i].response.data != NULL) {
-            free(dod->sdo[i].response.data);
-            dod->sdo[i].response.data = NULL;
+        if (dod->sdo[i].args.data != NULL) {
+            free(dod->sdo[i].args.data);
+            dod->sdo[i].args.data = NULL;
         }
     }
     cvector_free(dod->sdo);

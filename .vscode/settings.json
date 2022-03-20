@@ -10,7 +10,8 @@
         "typeinfo": "c",
         "typeindex": "c",
         "tuple": "c",
-        "string": "c"
+        "string": "c",
+        "data_object_protocol.h": "c"
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }
