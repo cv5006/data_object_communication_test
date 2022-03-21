@@ -255,17 +255,16 @@ void DOPTest()
         return;
     }
 
-    float* sdodat;
-    sdodat = (float*)dods[dod2]->sdo[0].args.data;
-    dods[dod2]->sdo[0].args.status = DATA_OBJECT_SDO_IDLE;
-    for (int i = 0; i < dods[dod2]->sdo[0].args.size; ++i) {
-        sdodat[i] = 0xFF;
+    sdo = DataObejct_FindSDO(dod2, sdo2_1);
+    sdo->args.status = DATA_OBJECT_SDO_IDLE;
+    for (int i = 0; i < sdo->args.size; ++i) {
+        ((float*)sdo->args.data)[i] = 0xFF;
     }
 
-    sdodat = (float*)dods[dod2]->sdo[1].args.data;
-    dods[dod2]->sdo[1].args.status = DATA_OBJECT_SDO_IDLE;
-    for (int i = 0; i < dods[dod2]->sdo[1].args.size; ++i) {
-        sdodat[i] = 0xFF;
+    sdo = DataObejct_FindSDO(dod2, sdo2_2);
+    sdo->args.status = DATA_OBJECT_SDO_IDLE;
+    for (int i = 0; i < sdo->args.size; ++i) {
+         ((float*)sdo->args.data)[i] = 0xFF;
     }
 
     printf("\n*.*.*. Rx2 .*.*.*\n");
@@ -274,18 +273,18 @@ void DOPTest()
         return;
     }
 
-    sdodat = (float*)dods[dod2]->sdo[0].args.data;
-    printf("d2s1 res : %d\n", dods[dod2]->sdo[0].args.status);
+    sdo = DataObejct_FindSDO(dod2, sdo2_1);
+    printf("d2s1 res : %d\n", sdo->args.status);
     printf("d2s1 data: ");
-    for (int i = 0; i < dods[dod2]->sdo[0].args.size; ++i) {
-        printf("%.3f, ", sdodat[i]);
+    for (int i = 0; i < sdo->args.size; ++i) {
+        printf("%.3f, ",  ((float*)sdo->args.data)[i]);
     } printf("\n");
 
-    sdodat = (float*)dods[dod2]->sdo[1].args.data;
-    printf("d2s2 res : %d\n", dods[dod2]->sdo[1].args.status);
+    sdo = DataObejct_FindSDO(dod2, sdo2_2);
+    printf("d2s2 res : %d\n", sdo->args.status);
     printf("d2s2 data: ");
-    for (int i = 0; i < dods[dod2]->sdo[1].args.size; ++i) {
-        printf("%.3f, ", sdodat[i]);
+    for (int i = 0; i < sdo->args.size; ++i) {
+        printf("%.3f, ",  ((float*)sdo->args.data)[i]);
     } printf("\n");
     
     
@@ -298,9 +297,7 @@ void DOPTest()
 
 
 int main() {
-    for (int i = 0; i < BUFF_SIZE; ++i) {
-        buff[i] = 0xFF;
-    }
+    memset(buff, 0xFF, BUFF_SIZE);
     DataObjectTest();
     DOPTest();
 }
