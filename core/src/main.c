@@ -301,6 +301,6 @@ int main() {
     for (int i = 0; i < BUFF_SIZE; ++i) {
         buff[i] = 0xFF;
     }
-    // DataObjectTest();
+    DataObjectTest();
     DOPTest();
 }

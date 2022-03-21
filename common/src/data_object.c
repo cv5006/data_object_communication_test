@@ -322,4 +322,6 @@ void DataObject_FreeDODs()
         }
     }
     free(dods);
+    dods = NULL;
+    dods_size = 0;
 }
