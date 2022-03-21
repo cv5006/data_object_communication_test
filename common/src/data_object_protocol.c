@@ -54,7 +54,12 @@ static int DOP_PubPDOSeq(DOP_Header* header, uint8_t* byte_arr)
 {
     int header_size = sizeof(DOP_Header);
     // Publish PDO    
-    uint16_t n_bytes = DataObject_PubPDO(header->dod_id, header->obj_id, byte_arr + header_size);
+    PDOStruct* pdo = DataObejct_FindPDO(header->dod_id, header->obj_id);
+    if (pdo == NULL) {
+        return -2;
+    }
+
+    uint16_t n_bytes = DataObject_PubPDO(pdo, byte_arr + header_size);
     if (n_bytes < 0) { // Publish error
         return -1;
     } else if (n_bytes == 0) { // Nothing to publish
@@ -74,7 +79,12 @@ static int DOP_GetSDOargsSeq(DOP_Header* header, uint8_t* byte_arr)
     byte_written += sizeof(DOP_Header);
 
     // Return Response
-    SDOargs res = DataObject_GetSDOargs(header->dod_id, header->obj_id);
+    SDOStruct* sdo = DataObejct_FindSDO(header->dod_id, header->obj_id);
+    if (sdo == NULL) {
+        return -2;
+    }
+
+    SDOargs res = DataObject_GetSDOargs(sdo);
     memcpy(byte_arr + byte_written, &res.status, sizeof(res.status));
     byte_written += sizeof(res.status);
     memcpy(byte_arr + byte_written, &res.size,   sizeof(res.size));
@@ -95,7 +105,12 @@ static int DOP_SubPDOSeq(uint8_t* byte_arr)
     DOP_Header header = GetHeader(byte_arr);
     byte_read += sizeof(DOP_Header);
 
-    uint16_t n_bytes = DataObject_SubPDO(header.dod_id, header.obj_id, (void*)(byte_arr + byte_read));
+    PDOStruct* pdo = DataObejct_FindPDO(header.dod_id, header.obj_id);
+    if (pdo == NULL) {
+        return -2;
+    }
+    
+    uint16_t n_bytes = DataObject_SubPDO(pdo, (void*)(byte_arr + byte_read));
     if (n_bytes < 0) {
         return -1;
     }
@@ -110,6 +125,10 @@ static int DOP_SDOSeq(uint8_t* byte_arr)
     int byte_read = 0;
     DOP_Header header = GetHeader(byte_arr);
     byte_read += sizeof(DOP_Header);
+    SDOStruct* sdo = DataObejct_FindSDO(header.dod_id, header.obj_id);
+    if (sdo == NULL) {
+        return -2;
+    }
 
     uint16_t req_bytes = 0;
     SDOargs req = Byte2SDOreq(byte_arr + byte_read, &req_bytes);
@@ -117,14 +136,14 @@ static int DOP_SDOSeq(uint8_t* byte_arr)
 
     uint16_t n_bytes = 0;
     if (req.status == DATA_OBJECT_SDO_REQU) {
-        n_bytes = DataObject_CallSDO(header.dod_id, header.obj_id, &req);
+        n_bytes = DataObject_CallSDO(sdo, &req);
         if (n_bytes < 0) {
             return -1;
         }
         // Assign Response
         cvector_push_back(sdos_to_res, header);
     } else if(req.status == DATA_OBJECT_SDO_SUCC || req.status == DATA_OBJECT_SDO_FAIL) {
-        n_bytes = DataObejct_SetSDOargs(header.dod_id, header.obj_id, &req);
+        n_bytes = DataObejct_SetSDOargs(sdo, &req);
         if (n_bytes < 0) {
             return -1;
         }

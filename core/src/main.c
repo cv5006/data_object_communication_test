@@ -101,6 +101,7 @@ void DataObjectTest()
     DataObejct_CreateDOD(dod_id);
 
     /* PDO Test */
+    PDOStruct* pdo = NULL;
 
     // Create PDO
     DataObejct_CreatePDO(dod_id, obj_id, "pdo1", Float32, 3, data);
@@ -117,8 +118,8 @@ void DataObjectTest()
     uint8_t buff[128];
     uint16_t len;
     
-    // DataObject_TxProtocol(buff, &len, 0, DATA_OBJECT_TYPE_PDO, obj_id);
-    len = DataObject_PubPDO(dod_id, obj_id, (void*)buff);
+    pdo = DataObejct_FindPDO(dod_id, obj_id);
+    len = DataObject_PubPDO(pdo, (void*)buff);
     
     PrintBuffer(buff, len);
 
@@ -132,29 +133,32 @@ void DataObjectTest()
     // Rx PDO
     printf("Rx PDO from buffer\n");
     
-    // DataObject_RxProtocol(buff, len);
-    len = DataObject_SubPDO(dod_id, obj_id, (void*)buff);
+    pdo = DataObejct_FindPDO(dod_id, obj_id);
+    len = DataObject_SubPDO(pdo, (void*)buff);
         
     printf("3. %s after rx: ", dods[dod_id]->pdo[dod_id].name);
     PrintData(data, N);
 
 
     /* SDO Test */
-    
+    SDOStruct* sdo = NULL;
+
     // Create SDO
     DataObejct_CreateSDO(dod_id, obj_id, "copy", Float32, Float_x10);
 
-
+    // Set Request
     SDOargs req;
-
     req.data = data;
     req.size = N;
     
-    DataObject_CallSDO(dod_id, obj_id, &req);
+    // Call SDO
+    sdo = DataObejct_FindSDO(dod_id, obj_id);
+    DataObject_CallSDO(sdo, &req);
 
     PrintData((float*)(dods[dod_id]->sdo[0].args.data),
                        dods[dod_id]->sdo[0].args.size);
 
+    // Free Objects
     free(dods[dod_id]->sdo[0].args.data);
     dods[dod_id]->sdo[0].args.data = NULL;
 
@@ -212,11 +216,17 @@ void DOPTest()
     req.size = 3;
     req.status = DATA_OBJECT_SDO_REQU;
 
-    DataObejct_SetSDOargs(dod2, sdo2_1, &req);
-    DataObejct_SetSDOargs(dod2, sdo2_2, &req);
+    SDOStruct* sdo = NULL;
+    sdo = DataObejct_FindSDO(dod2, sdo2_1);
+    DataObejct_SetSDOargs(sdo, &req);
+    sdo = DataObejct_FindSDO(dod2, sdo2_2);
+    DataObejct_SetSDOargs(sdo, &req);
 
     printf("\n*.*.*. Tx1 .*.*.*\n");
-    DOP_Tx(buff, &len, txpdo, n_txpdo, txsdo, n_txsdo);
+    if (DOP_Tx(buff, &len, txpdo, n_txpdo, txsdo, n_txsdo) < 0) {
+        printf("Tx failed\n");
+        return;
+    }
 
     PrintBuffer(buff, len);
 
@@ -229,7 +239,10 @@ void DOPTest()
 
 
     printf("\n*.*.*. Rx1 .*.*.*\n");
-    DOP_Rx(buff, len);
+    if (DOP_Rx(buff, len) < 0) {
+        printf("Rx failed\n");
+        return;
+    }
 
     printf("float_1: %.3f\n", float_1);
     printf("int16_2: %d, %d\n", int16_2[0], int16_2[1]);
@@ -237,7 +250,10 @@ void DOPTest()
 
 
     printf("\n*.*.*. Tx2 .*.*.*\n");
-    DOP_Tx(buff, &len, NULL, 0, NULL, 0);
+    if (DOP_Tx(buff, &len, NULL, 0, NULL, 0) < 0) {
+        printf("Tx failed\n");
+        return;
+    }
 
     float* sdodat;
     sdodat = (float*)dods[dod2]->sdo[0].args.data;
@@ -253,7 +269,10 @@ void DOPTest()
     }
 
     printf("\n*.*.*. Rx2 .*.*.*\n");
-    DOP_Rx(buff, len);
+    if (DOP_Rx(buff, len) < 0) {
+        printf("Rx failed\n");
+        return;
+    }
 
     sdodat = (float*)dods[dod2]->sdo[0].args.data;
     printf("d2s1 res : %d\n", dods[dod2]->sdo[0].args.status);

@@ -116,16 +116,18 @@ void DataObejct_CreateDOD(uint8_t dod_id);
 void DataObejct_CreatePDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, uint16_t len, void* addr);
 void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeEnum type, SDOcallback callback);
 
-uint16_t DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, void* data);
-uint16_t DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, void* data);
+PDOStruct* DataObejct_FindPDO(uint8_t dod_id, uint16_t id);
+SDOStruct* DataObejct_FindSDO(uint8_t dod_id, uint16_t id);
 
-uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req);
-uint16_t DataObejct_SetSDOargs(uint8_t dod_id, uint16_t obj_id, SDOargs* req);
-SDOargs DataObject_GetSDOargs(uint8_t dod_id, uint16_t obj_id);
+uint16_t DataObject_PubPDO(PDOStruct* pdo, void* data);
+uint16_t DataObject_SubPDO(PDOStruct* pdo, void* data);
+
+uint16_t DataObject_CallSDO(SDOStruct* sdo, SDOargs* req);
+uint16_t DataObejct_SetSDOargs(SDOStruct* sdo, SDOargs* req);
+SDOargs DataObject_GetSDOargs(SDOStruct* sdo);
 
 void DataObject_PrintDictionary(DataObjectDictionary* dod);
 int DataObject_ExportDictionaryCSVStr(DataObjectDictionary* dod, char** csv_str);
-
 
 void DataObject_FreeDODs();
 

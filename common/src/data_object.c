@@ -34,34 +34,45 @@ static int CompareID(const void* lt, const void* rt)
     return (int)*(uint8_t *)lt - (int)*(uint8_t *)rt;
 }
 
-static int FindPDO(DataObjectDictionary* dod, uint16_t id)
+static DataObjectDictionary* FindDOD(uint8_t dod_id)
 {
-    if (!dod->pdo) {
-        return -2;
+    if (dods_size < dod_id) {
+        return NULL;
+    }
+    
+    return dods[dod_id];
+}
+
+PDOStruct* DataObejct_FindPDO(uint8_t dod_id, uint16_t id)
+{
+    DataObjectDictionary* dod = FindDOD(dod_id);
+    if (dod == NULL || dod->pdo == NULL) {
+        return NULL;
     }
 
     for (int i = 0; i < cvector_size(dod->pdo); ++i) {
         if (id == dod->pdo[i].id) {
-            return i;
+            return &dod->pdo[i];
         }
     }
 
-    return -1;
+    return NULL;
 }
 
-static int FindSDO(DataObjectDictionary* dod, uint16_t id)
+SDOStruct* DataObejct_FindSDO(uint8_t dod_id, uint16_t id)
 {
-    if (!dod->sdo) {
-        return -2;
+    DataObjectDictionary* dod = FindDOD(dod_id);
+    if (dod == NULL || dod->sdo == NULL) {
+        return NULL;
     }
 
     for (int i = 0; i < cvector_size(dod->sdo); ++i) {
         if (id == dod->sdo[i].id) {
-            return i;
+            return &dod->sdo[i];
         }
     }
 
-    return -1;
+    return NULL;
 }
 
 
@@ -132,11 +143,8 @@ void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeE
 
 
 // PDO Pub & Sub
-uint16_t DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, void* data)
+uint16_t DataObject_PubPDO(PDOStruct* pdo, void* data)
 {    
-    DataObjectDictionary* dod = dods[dod_id];
-    PDOStruct* pdo = &dod->pdo[FindPDO(dod, obj_id)];
-
     if (memcmp(pdo->addr, pdo->last_pub, pdo->bytelen) == 0) {
         // No Pub if data is same with last published one
         return 0;
@@ -148,20 +156,16 @@ uint16_t DataObject_PubPDO(uint8_t dod_id, uint16_t obj_id, void* data)
 }
 
 
-uint16_t DataObject_SubPDO(uint8_t dod_id, uint16_t obj_id, void* data)
+uint16_t DataObject_SubPDO(PDOStruct* pdo, void* data)
 {
-    DataObjectDictionary* dod = dods[dod_id];
-    PDOStruct* pdo = &dod->pdo[FindPDO(dod, obj_id)];
     memcpy(pdo->addr, data, pdo->bytelen);
     return pdo->bytelen;
 }
 
 
 // SDO call
-uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
+uint16_t DataObject_CallSDO(SDOStruct* sdo, SDOargs* req)
 {
-    DataObjectDictionary* dod = dods[dod_id];
-    SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
     if (sdo->args.data != NULL) {
         free(sdo->args.data);
     }
@@ -170,11 +174,8 @@ uint16_t DataObject_CallSDO(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
     return sdo->args.size * sdo->args.data_size;
 }
 
-uint16_t DataObejct_SetSDOargs(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
+uint16_t DataObejct_SetSDOargs(SDOStruct* sdo, SDOargs* req)
 {
-    DataObjectDictionary* dod = dods[dod_id];
-    SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
-
     sdo->args.status = req->status;
 
     if (sdo->args.data != NULL) {
@@ -189,10 +190,8 @@ uint16_t DataObejct_SetSDOargs(uint8_t dod_id, uint16_t obj_id, SDOargs* req)
 }
 
 
-SDOargs DataObject_GetSDOargs(uint8_t dod_id, uint16_t obj_id)
+SDOargs DataObject_GetSDOargs(SDOStruct* sdo)
 {
-    DataObjectDictionary* dod = dods[dod_id];
-    SDOStruct* sdo = &dod->sdo[FindSDO(dod, obj_id)];
     
     SDOargs res;
     res.status    = sdo->args.status;
