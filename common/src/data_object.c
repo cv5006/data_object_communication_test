@@ -66,9 +66,11 @@ void DataObejct_InitDefaultDOD()
 void DataObejct_CreateDOD(uint8_t dod_id, char* name)
 {
     if (dods_size <= 0) {
-        dods = (DataObjectDictionary**)malloc(sizeof(DataObjectDictionary*));
-        dods[0] = NULL;
-        dods_size = 1;
+        // Alloc one for defualt, one for yours
+        dods = (DataObjectDictionary**)malloc(sizeof(DataObjectDictionary*) * 2);
+        dods[0] = NULL; dods[1] = NULL;
+        dods_size = 2;
+        DataObejct_InitDefaultDOD();
     }
 
     DataObjectDictionary* dod = (DataObjectDictionary*)malloc(sizeof(DataObjectDictionary));

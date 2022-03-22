@@ -209,7 +209,6 @@ void DOPTest()
     float   float_3[3] = {12.34, 56.78, 90.12};
 
     // Create DODs
-    DataObejct_InitDefaultDOD();
     DataObejct_CreateDOD(dod1, "dod1");
     DataObejct_CreatePDO(dod1, pdo1_1, "pdo 1-1", Float32, 1, &float_1);
     DataObejct_CreatePDO(dod1, pdo1_2, "pdo 1-2", Int16, 2, int16_2);
