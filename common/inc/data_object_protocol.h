@@ -5,6 +5,8 @@
 
 #pragma pack(1)
 
+// TODO: buffer overflow check?
+
 /*
   ___         _               _ 
  | _ \_ _ ___| |_ ___  __ ___| |

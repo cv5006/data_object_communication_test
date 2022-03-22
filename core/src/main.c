@@ -8,7 +8,7 @@ cvector_vector_type(DataObjectDictionary*) dods;
 
 #define N 3
 float data[N];
-#define BUFF_SIZE 128
+#define BUFF_SIZE 512
 uint8_t buff[BUFF_SIZE];
 
 void PrintData(float* data, int len){
@@ -18,27 +18,68 @@ void PrintData(float* data, int len){
 }
 
 void PrintBuffer(uint8_t* buff, uint16_t len){
-    int cols = 8;
+    int cols = 32;
     int row_written = 0;
     printf("buffer filled %dB:\n", len);
 
-    printf("  |");
+    printf("   |");
     for (int i = 0; i < cols; ++i) {
         printf(" %2d", i);
     } printf("\n");
 
-    printf("--+");
+    printf("---+");
     for (int i = 0; i < cols; ++i) {
         printf("---");
     }
 
     for (int i = 0; i < len; ++i) {
         if (i == ((cols) * row_written)) {
-            printf("\n%2d|",row_written);
+            printf("\n%3d|", i);
             ++row_written;
         }
         printf(" %02X", buff[i]);
     } printf("\n");
+}
+
+void ResetRes(uint8_t dod_id, uint16_t id)
+{
+    SDOargs* res = DataObject_GetSDOres(dod_id, id);
+    if (res == NULL) {
+        return;
+    }
+
+    res->status = DATA_OBJECT_SDO_IDLE;
+    if (res->data != NULL) {
+        free(res->data);
+        res->data = NULL;
+    }
+    res->size = 0;
+}
+
+void PrintRes(uint8_t dod_id, uint16_t id)
+{
+    SDOStruct* sdo = DataObejct_FindSDO(dod_id, id);
+    SDOargs* res = &sdo->args;
+    printf("Result of SDO \"%s\"\n", sdo->name);
+    printf("status: ");
+    switch (res->status) {
+        case DATA_OBJECT_SDO_SUCC: printf("Success\n"); break;
+        case DATA_OBJECT_SDO_FAIL: printf("Fail\n");    break;
+        case DATA_OBJECT_SDO_IDLE: printf("Idle\n");    break;
+        case DATA_OBJECT_SDO_REQU: printf("Request\n"); break;
+        default: printf("Invalid status\n"); break;
+    }
+
+    switch (sdo->type) {
+    case Char: printf("%s", (char*)res->data); break;
+    case Float32:
+        for (int i = 0; i < res->size; ++i) {
+            printf("%.3f, ", ((float*)res->data)[i]);
+        } printf("\n");
+        break;
+    default: printf("No printf for this type\n"); break;
+    }
+    printf("\n");
 }
 
 
@@ -46,20 +87,12 @@ void Float_x10(SDOargs* req, SDOargs* res)
 {    
     printf("Float_x10 Callback\n");
 
-    printf("Req args: ");
-    for (int i = 0; i < req->size ; ++i) {
-        printf("%.3f, ", ((float*)(req->data))[i]);
-    } printf("\n");
-
     res->data = malloc(sizeof(float)* req->size);
     res->size = req->size;
 
-    printf("Res = Req * 10\n");
-    printf("Res args: ");
     for (int i = 0; i < req->size ; ++i) {
         ((float*)res->data)[i] = ((float*)(req->data))[i] * 10;
-        printf("%.3f, ", ((float*)res->data)[i]);
-    } printf("\n");
+    }
 
     res->status = DATA_OBJECT_SDO_SUCC;
 }
@@ -68,25 +101,18 @@ void RepeatReq(SDOargs* req, SDOargs* res)
 {    
     printf("RepeatReq Callback\n");
 
-    printf("Req args: ");
-    for (int i = 0; i < req->size ; ++i) {
-        printf("%.3f, ", ((float*)(req->data))[i]);
-    } printf("\n");
-
     res->size = req->size * 2;
     int data_size = sizeof(float) * req->size;
     res->data = malloc(data_size * 2);
 
-    printf("Res = Req, Req\n");
-    printf("Res args: ");
     memcpy(res->data,             req->data, data_size);
     memcpy(res->data + data_size, req->data, data_size);
-    for (int i = 0; i < res->size ; ++i) {
-        printf("%.3f, ", ((float*)res->data)[i]);
-    } printf("\n");
 
     res->status = DATA_OBJECT_SDO_SUCC;
 }
+
+
+
 
 void DataObjectTest()
 {
@@ -98,7 +124,7 @@ void DataObjectTest()
     uint8_t obj_id = 123;
 
     // Create DOD
-    DataObejct_CreateDOD(dod_id);
+    DataObejct_CreateDOD(dod_id, "TestDOD");
 
     /* PDO Test */
     PDOStruct* pdo = NULL;
@@ -174,7 +200,7 @@ void DOPTest()
     printf("*.*.*.*.*. Protocol Test .*.*.*.*\n");
     printf("*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*.*\n");
 
-    uint8_t dod1 = 0, dod2 = 1;
+    uint8_t dod1 = 1, dod2 = 2;
     uint16_t pdo1_1 = 123, pdo1_2 = 456, pdo2_1 = 123;
     uint16_t sdo2_1 = 11, sdo2_2 = 22;
 
@@ -183,11 +209,12 @@ void DOPTest()
     float   float_3[3] = {12.34, 56.78, 90.12};
 
     // Create DODs
-    DataObejct_CreateDOD(dod1);
+    DataObejct_InitDefaultDOD();
+    DataObejct_CreateDOD(dod1, "dod1");
     DataObejct_CreatePDO(dod1, pdo1_1, "pdo 1-1", Float32, 1, &float_1);
     DataObejct_CreatePDO(dod1, pdo1_2, "pdo 1-2", Int16, 2, int16_2);
 
-    DataObejct_CreateDOD(dod2);
+    DataObejct_CreateDOD(dod2, "dod2");
     DataObejct_CreatePDO(dod2, pdo2_1, "pdo 2-1",   Float32, 3, &float_3);
     DataObejct_CreateSDO(dod2, sdo2_1, "float x10", Float32, Float_x10);
     DataObejct_CreateSDO(dod2, sdo2_2, "rep req",   Float32, RepeatReq);
@@ -199,28 +226,27 @@ void DOPTest()
     DOP_Header d2s1 = {dod2, sdo2_1};
     DOP_Header d2s2 = {dod2, sdo2_2};
 
+    DOP_Header dod_list = {DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_DOD_LIST};
+    DOP_Header pdo_list = {DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_PDO_LIST};
+    DOP_Header sdo_list = {DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_SDO_LIST};
+
     // Tx
     uint16_t n_txpdo = 3;
     DOP_Header txpdo[3] = {d1p1, d1p2, d2p1};
 
-    uint16_t n_txsdo = 2;
-    DOP_Header txsdo[2] = {d2s1, d2s2};
+    uint16_t n_txsdo = 5;
+    DOP_Header txsdo[5] = {d2s1, d2s2, dod_list, pdo_list, sdo_list};
 
     uint16_t len;
 
-    SDOargs req;
-    data[0] = 1;
-    data[1] = 2;
-    data[2] = 3;
-    req.data = data;
-    req.size = 3;
-    req.status = DATA_OBJECT_SDO_REQU;
+    DataObject_SetSDOreq(dod2, sdo2_1, data, N);
+    DataObject_SetSDOreq(dod2, sdo2_2, data, N);
 
-    SDOStruct* sdo = NULL;
-    sdo = DataObejct_FindSDO(dod2, sdo2_1);
-    DataObejct_SetSDOargs(sdo, &req);
-    sdo = DataObejct_FindSDO(dod2, sdo2_2);
-    DataObejct_SetSDOargs(sdo, &req);
+    uint8_t dod2req = 0;//DATA_OBJECT_DEFAULT_DOD;
+    DataObject_SetSDOreq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_DOD_LIST, NULL, 0);
+    
+    DataObject_SetSDOreq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_PDO_LIST, (void*)&(uint8_t){1}, 1);
+    DataObject_SetSDOreq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_SDO_LIST, (void*)&(uint8_t){2}, 1);
 
     printf("\n*.*.*. Tx1 .*.*.*\n");
     if (DOP_Tx(buff, &len, txpdo, n_txpdo, txsdo, n_txsdo) < 0) {
@@ -255,17 +281,10 @@ void DOPTest()
         return;
     }
 
-    sdo = DataObejct_FindSDO(dod2, sdo2_1);
-    sdo->args.status = DATA_OBJECT_SDO_IDLE;
-    for (int i = 0; i < sdo->args.size; ++i) {
-        ((float*)sdo->args.data)[i] = 0xFF;
-    }
+    PrintBuffer(buff, len);
 
-    sdo = DataObejct_FindSDO(dod2, sdo2_2);
-    sdo->args.status = DATA_OBJECT_SDO_IDLE;
-    for (int i = 0; i < sdo->args.size; ++i) {
-         ((float*)sdo->args.data)[i] = 0xFF;
-    }
+    ResetRes(dod2, sdo2_1);
+    ResetRes(dod2, sdo2_2);
 
     printf("\n*.*.*. Rx2 .*.*.*\n");
     if (DOP_Rx(buff, len) < 0) {
@@ -273,21 +292,13 @@ void DOPTest()
         return;
     }
 
-    sdo = DataObejct_FindSDO(dod2, sdo2_1);
-    printf("d2s1 res : %d\n", sdo->args.status);
-    printf("d2s1 data: ");
-    for (int i = 0; i < sdo->args.size; ++i) {
-        printf("%.3f, ",  ((float*)sdo->args.data)[i]);
-    } printf("\n");
+    PrintRes(dod2, sdo2_1);
+    PrintRes(dod2, sdo2_2);
+    
+    PrintRes(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_DOD_LIST);
+    PrintRes(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_PDO_LIST);
+    PrintRes(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_SDO_LIST);
 
-    sdo = DataObejct_FindSDO(dod2, sdo2_2);
-    printf("d2s2 res : %d\n", sdo->args.status);
-    printf("d2s2 data: ");
-    for (int i = 0; i < sdo->args.size; ++i) {
-        printf("%.3f, ",  ((float*)sdo->args.data)[i]);
-    } printf("\n");
-    
-    
     // Free DODs
     DataObject_FreeDODs();
 

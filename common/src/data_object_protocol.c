@@ -84,14 +84,13 @@ static int DOP_GetSDOargsSeq(DOP_Header* header, uint8_t* byte_arr)
         return -2;
     }
 
-    SDOargs res = DataObject_GetSDOargs(sdo);
-    memcpy(byte_arr + byte_written, &res.status, sizeof(res.status));
-    byte_written += sizeof(res.status);
-    memcpy(byte_arr + byte_written, &res.size,   sizeof(res.size));
-    byte_written += sizeof(res.size);
+    memcpy(byte_arr + byte_written, &sdo->args.status, sizeof(sdo->args.status));
+    byte_written += sizeof(sdo->args.status);
+    memcpy(byte_arr + byte_written, &sdo->args.size,   sizeof(sdo->args.size));
+    byte_written += sizeof(sdo->args.size);
 
-    int data_len = res.size * res.data_size;
-    memcpy(byte_arr + byte_written, res.data, data_len);
+    int data_len = sdo->args.size * sdo->args.data_size;
+    memcpy(byte_arr + byte_written, sdo->args.data, data_len);
     byte_written += data_len;
 
     return byte_written;
@@ -137,9 +136,6 @@ static int DOP_SDOSeq(uint8_t* byte_arr)
     uint16_t n_bytes = 0;
     if (req.status == DATA_OBJECT_SDO_REQU) {
         n_bytes = DataObject_CallSDO(sdo, &req);
-        if (n_bytes < 0) {
-            return -1;
-        }
         // Assign Response
         cvector_push_back(sdos_to_res, header);
     } else if(req.status == DATA_OBJECT_SDO_SUCC || req.status == DATA_OBJECT_SDO_FAIL) {
@@ -196,7 +192,7 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len, DOP_Header* pdos, int n_pdos, 
     int n_sdo_cursor = cursor;
     cursor += DOP_OBJ_NUMS_SIZE;
     uint8_t n_sdo = 0;
-    if (cvector_size(sdos_to_res) > 0) {
+    if (sdos_to_res != NULL) {
         for(int i = 0; i < cvector_size(sdos_to_res); ++i) {
             int temp_cursor = DOP_GetSDOargsSeq(&sdos_to_res[i], &byte_arr[cursor]);
             if (temp_cursor > 0) {
