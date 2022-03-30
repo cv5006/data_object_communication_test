@@ -4,9 +4,6 @@ project(data_obejct_communication_test VERSION 0.1.0)
 include(CTest)
 enable_testing()
 
-set(CORE
-    core/src/main.c
-)
 
 set(COMMON
     common/src/data_object.c
@@ -21,8 +18,20 @@ include_directories(core/inc)
 include_directories(common/inc)
 include_directories(utils/inc)
 
-add_executable(main
-    ${CORE}
+add_executable(test_dod
+    core/src/test_dod.c
+    ${COMMON}
+    ${UTILS}
+)
+
+add_executable(test_cli
+    core/src/test_cli.cc
+    ${COMMON}
+    ${UTILS}
+)
+
+add_executable(test_srv
+    core/src/test_srv.cc
     ${COMMON}
     ${UTILS}
 )

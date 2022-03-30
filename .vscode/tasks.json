@@ -4,9 +4,25 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "run main",
+            "label": "run test_dod",
             "type": "shell",
-            "command": "${workspaceFolder}/build/main",
+            "command": "${workspaceFolder}/build/test_dod",
+            "problemMatcher": [
+                "$gcc",
+            ]
+        },
+        {
+            "label": "run test_cli",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/test_cli",
+            "problemMatcher": [
+                "$gcc",
+            ]
+        },
+        {
+            "label": "run test_srv",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/test_srv",
             "problemMatcher": [
                 "$gcc",
             ]
