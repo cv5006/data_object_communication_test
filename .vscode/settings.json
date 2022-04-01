@@ -11,7 +11,9 @@
         "typeindex": "c",
         "tuple": "c",
         "string": "c",
-        "data_object_protocol.h": "c"
+        "data_object_protocol.h": "c",
+        "ostream": "cpp",
+        "iostream": "cpp"
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }
