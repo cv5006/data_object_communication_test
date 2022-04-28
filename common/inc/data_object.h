@@ -1,6 +1,10 @@
 #ifndef DATA_OBJECT_H_
 #define DATA_OBJECT_H_
 
+#if __cplusplus
+extern "C"{
+#endif
+
 #include "stdio.h"
 #include "stdint.h"
 #include "string.h"
@@ -158,5 +162,10 @@ void DataObject_FreeDODs();
 void DefaultDOD_GetDODs(SDOargs* req, SDOargs* res);
 void DefaultDOD_GetPDOs(SDOargs* req, SDOargs* res);
 void DefaultDOD_GetSDOs(SDOargs* req, SDOargs* res);
+
+
+#if __cplusplus
+}
+#endif
 
 #endif // DATA_OBJECT_H_

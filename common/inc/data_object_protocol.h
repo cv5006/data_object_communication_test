@@ -1,6 +1,10 @@
 #ifndef DATA_OBJECT_PROTOCOL_H_
 #define DATA_OBJECT_PROTOCOL_H_
 
+#if __cplusplus
+extern "C"{
+#endif
+
 #include "data_object.h"
 
 #pragma pack(1)
@@ -53,5 +57,9 @@ typedef struct DOP_Header
 int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len, DOP_Header* pdos, int n_pdos, DOP_Header* sdos, int n_sdos);
 int DOP_Rx(uint8_t* byte_arr, uint16_t byte_len);
 
+
+#if __cplusplus
+}
+#endif
 
 #endif // DATA_OBJECT_PROTOCOL_H_
