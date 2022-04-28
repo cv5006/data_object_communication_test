@@ -15,6 +15,18 @@ static int SocketSrvBegin(int* srvsock, int* clisock);
 static int SocketRecv(int* clisock, char* rx_buff);
 static int SocketSend(int* clisock, char* tx_buff, int tx_len);
 
+void TestSDO(SDOargs* req, SDOargs* res)
+{
+    for (int i=0; i < req->data_size; ++i) {
+        cout << ((int16_t*)req->data)[i] << " ";        
+    }
+    cout << endl;
+
+    res->status = DATA_OBJECT_SDO_SUCC;
+    
+}
+
+
 int main(int argc, char* argv[])
 {
     int srvsock, clisock;
@@ -25,12 +37,34 @@ int main(int argc, char* argv[])
 
     SocketSrvBegin(&srvsock, &clisock);
 
-    rx_len = SocketRecv(&clisock, rx_buff);
+    DataObejct_InitDefaultDOD();
 
-    for (int i = 0; i < rx_len; ++i) {
-        cout << +rx_buff[i] << " " << flush;
-    } 
-    cout << endl;
+    int32_t pdo1[10];
+    DataObejct_CreateDOD(1, (char*)"DOD1");
+    DataObejct_CreatePDO(1, 1, (char*)"PDO1", Int32, 10, pdo1);
+
+    DataObejct_CreateDOD(2, (char*)"DOD2");
+    DataObejct_CreateSDO(2, 10, (char*)"TestSDO", Int16, TestSDO);
+
+
+    DOP_Header pdos[1];
+    pdos[0] = {1, 1};
+
+    while(1){
+        rx_len = SocketRecv(&clisock, rx_buff);
+        if (rx_len < 0) {
+            cout << "End srv" << endl;
+            break;
+        }
+        cout << "Rx: " << DOP_Rx((uint8_t*)rx_buff, rx_len) << endl;
+
+        cout << "Tx: " << DOP_Tx((uint8_t*)tx_buff, (uint16_t*)&tx_len) << endl;
+        SocketSend(&clisock, tx_buff, tx_len);
+    }
+    // for (int i = 0; i < 10; ++i) {
+    //     cout << +pdo1[i] << " " << flush;
+    // }
+    // cout << endl;
 
     return 0;
 }
@@ -89,14 +123,13 @@ static int SocketSrvBegin(int* srvsock, int* clisock)
 static int SocketRecv(int* clisock, char* rx_buff)
 {
     int recv_len = recv(*clisock, rx_buff, 1024, 0);
-    
-    if (recv_len == 0) {
-        close(*clisock);
-        *clisock = 0;
-        return -1;
+    if (recv_len > 0) {
+        return recv_len;
     }
 
-    return recv_len;
+    close(*clisock);
+    *clisock = 0;
+    return -1;
 }
 
 static int SocketSend(int* clisock, char* tx_buff, int tx_len)

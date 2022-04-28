@@ -26,13 +26,36 @@ int main(int argc, char* argv[])
 
     SocketCliBegin(&srvsock);
 
-    tx_len = 10;
-    SocketSend(&srvsock, tx_buff, 10);
+    DataObejct_InitDefaultDOD();
+
+    uint8_t sdo_data = 1;
+    SDOargs sdo_res;
+
+    /* Req DOD List */
+    DOP_AddSDOtoReq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_DOD_LIST, NULL, 0);
+
+    cout << "Tx: " << DOP_Tx((uint8_t*)tx_buff, (uint16_t*)&tx_len) << endl;
+    SocketSend(&srvsock, tx_buff, tx_len);
+    rx_len = SocketRecv(&srvsock, rx_buff);
+    cout << "Rx: " << DOP_Rx((uint8_t*)rx_buff, rx_len) << endl;
     
-    for (int i = 0; i < tx_len; ++i) {
-        cout << +tx_buff[i] << " " << flush;
-    } 
-    cout << endl;
+    sdo_res = *DataObject_GetSDOres(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_DOD_LIST);
+    char* res_str = (char*)sdo_res.data;
+    cout << res_str << endl;
+
+    /* Req PDO List */
+    sdo_data = 1;
+    DOP_AddSDOtoReq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_PDO_LIST, (void*)&sdo_data, 1);
+
+    cout << "Tx: " << DOP_Tx((uint8_t*)tx_buff, (uint16_t*)&tx_len) << endl;
+    SocketSend(&srvsock, tx_buff, tx_len);
+
+    rx_len = SocketRecv(&srvsock, rx_buff);
+    cout << "Rx: " << DOP_Rx((uint8_t*)rx_buff, rx_len) << endl;
+    
+    sdo_res = *DataObject_GetSDOres(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_PDO_LIST);
+    res_str = (char*)sdo_res.data;
+    cout << res_str << endl;
 
     return 0;
 }

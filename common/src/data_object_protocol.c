@@ -1,8 +1,9 @@
 #include "data_object_protocol.h"
 
 
+cvector_vector_type(DOP_Header) pdo_to_sync;
+cvector_vector_type(DOP_Header) sdos_to_req;
 cvector_vector_type(DOP_Header) sdos_to_res;
-
 
 static DOP_Header GetHeader(uint8_t* byte_arr)
 {
@@ -153,7 +154,7 @@ static int DOP_SDOSeq(uint8_t* byte_arr)
 
 
 // TxRx Protocols
-int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len, DOP_Header* pdos, int n_pdos, DOP_Header* sdos, int n_sdos)
+int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len)
 {
     int cursor = 0;
     
@@ -166,9 +167,9 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len, DOP_Header* pdos, int n_pdos, 
     int n_pdo_cursor = cursor;
     cursor += DOP_OBJ_NUMS_SIZE;
     uint8_t n_pdo = 0;
-    if (n_pdos > 0) {
-        for(int i = 0; i < n_pdos; ++i) {
-            int temp_cursor = DOP_PubPDOSeq(&pdos[i], &byte_arr[cursor]);
+    if (pdo_to_sync != NULL) {
+        for(int i = 0; i < cvector_size(pdo_to_sync); ++i) {
+            int temp_cursor = DOP_PubPDOSeq(&pdo_to_sync[i], &byte_arr[cursor]);
             if (temp_cursor > 0) {
                 cursor += temp_cursor;
                 ++n_pdo;
@@ -208,9 +209,9 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len, DOP_Header* pdos, int n_pdos, 
     }
 
     // Req SDOs
-    if (n_sdos > 0) {
-        for(int i = 0; i < n_sdos; ++i) {
-            int temp_cursor = DOP_GetSDOargsSeq(&sdos[i], &byte_arr[cursor]);
+    if (sdos_to_req != NULL) {
+        for(int i = 0; i < cvector_size(sdos_to_req); ++i) {
+            int temp_cursor = DOP_GetSDOargsSeq(&sdos_to_req[i], &byte_arr[cursor]);
             if (temp_cursor > 0) {
                 cursor += temp_cursor;
                 ++n_sdo;
@@ -218,6 +219,8 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len, DOP_Header* pdos, int n_pdos, 
                 return temp_cursor;
             }
         }
+        cvector_free(sdos_to_req);
+        sdos_to_req = NULL;
     }
 
     // Set # of PDOs
@@ -278,4 +281,25 @@ int DOP_Rx(uint8_t* byte_arr, uint16_t byte_len)
     }
 
     return 0;
+}
+
+
+void DOP_AddPDOtoSync(uint8_t dod_id, uint16_t obj_id)
+{
+    DOP_Header pdo = {dod_id, obj_id};
+    cvector_push_back(pdo_to_sync, pdo);
+}
+
+void DOP_ClearPDOtoSync()
+{
+    cvector_free(pdo_to_sync);
+    pdo_to_sync = NULL;
+}
+
+void DOP_AddSDOtoReq(uint8_t dod_id, uint16_t obj_id, void* data, uint16_t size)
+{
+    DOP_Header sdo = {dod_id, obj_id};
+    cvector_push_back(sdos_to_req, sdo);
+
+    DataObject_SetSDOreq(dod_id, obj_id, data, size);
 }

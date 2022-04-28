@@ -218,37 +218,22 @@ void DOPTest()
     DataObejct_CreateSDO(dod2, sdo2_1, "float x10", Float32, Float_x10);
     DataObejct_CreateSDO(dod2, sdo2_2, "rep req",   Float32, RepeatReq);
 
-    DOP_Header d1p1 = {dod1, pdo1_1};
-    DOP_Header d1p2 = {dod1, pdo1_2};
-    DOP_Header d2p1 = {dod2, pdo2_1};
-
-    DOP_Header d2s1 = {dod2, sdo2_1};
-    DOP_Header d2s2 = {dod2, sdo2_2};
-
-    DOP_Header dod_list = {DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_DOD_LIST};
-    DOP_Header pdo_list = {DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_PDO_LIST};
-    DOP_Header sdo_list = {DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_SDO_LIST};
 
     // Tx
-    uint16_t n_txpdo = 3;
-    DOP_Header txpdo[3] = {d1p1, d1p2, d2p1};
-
-    uint16_t n_txsdo = 5;
-    DOP_Header txsdo[5] = {d2s1, d2s2, dod_list, pdo_list, sdo_list};
-
     uint16_t len;
 
-    DataObject_SetSDOreq(dod2, sdo2_1, data, N);
-    DataObject_SetSDOreq(dod2, sdo2_2, data, N);
-
-    uint8_t dod2req = 0;//DATA_OBJECT_DEFAULT_DOD;
-    DataObject_SetSDOreq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_DOD_LIST, NULL, 0);
-    
-    DataObject_SetSDOreq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_PDO_LIST, (void*)&(uint8_t){1}, 1);
-    DataObject_SetSDOreq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_SDO_LIST, (void*)&(uint8_t){2}, 1);
-
     printf("\n*.*.*. Tx1 .*.*.*\n");
-    if (DOP_Tx(buff, &len, txpdo, n_txpdo, txsdo, n_txsdo) < 0) {
+    DOP_AddPDOtoSync(dod1, pdo1_1);
+    DOP_AddPDOtoSync(dod1, pdo1_2);
+    DOP_AddPDOtoSync(dod2, pdo2_1);
+
+    DOP_AddSDOtoReq(dod2, sdo2_1, data, N);
+    DOP_AddSDOtoReq(dod2, sdo2_2, data, N);
+    DOP_AddSDOtoReq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_DOD_LIST, NULL, 0);
+    DOP_AddSDOtoReq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_PDO_LIST, (void*)&(uint8_t){1}, 1);
+    DOP_AddSDOtoReq(DATA_OBJECT_DEFAULT_DOD, DATA_OBJECT_SDO_GET_SDO_LIST, (void*)&(uint8_t){2}, 1);
+
+    if (DOP_Tx(buff, &len) < 0) {
         printf("Tx failed\n");
         return;
     }
@@ -275,7 +260,7 @@ void DOPTest()
 
 
     printf("\n*.*.*. Tx2 .*.*.*\n");
-    if (DOP_Tx(buff, &len, NULL, 0, NULL, 0) < 0) {
+    if (DOP_Tx(buff, &len) < 0) {
         printf("Tx failed\n");
         return;
     }
