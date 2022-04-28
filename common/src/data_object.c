@@ -69,7 +69,7 @@ void DataObejct_CreateDOD(uint8_t dod_id, char* name)
         // Alloc one for defualt, one for yours
         dods = (DataObjectDictionary**)malloc(sizeof(DataObjectDictionary*) * 2);
         dods[0] = NULL; dods[1] = NULL;
-        dods_size = 2;
+        dods_size = 1;
         DataObejct_InitDefaultDOD();
     }
 
