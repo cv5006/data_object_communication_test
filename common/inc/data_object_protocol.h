@@ -38,12 +38,17 @@ SDO Packet
 
 */ 
 
+#define DOP_SUCCESS 0
+#define DOP_FAULTY_PDO -1
+#define DOP_FAULTY_SDO -2
 
 #define DOP_CHAR_PDO 0x50
 #define DOP_CHAR_SDO 0x53
 
 #define DOP_OBJ_CHAR_SIZE 1
 #define DOP_OBJ_NUMS_SIZE 1
+
+#define DOP_SDO_SET_PDO_TO_SYNC 3
 
 typedef struct DOP_Header
 {
@@ -52,6 +57,7 @@ typedef struct DOP_Header
 } DOP_Header;
 
 
+void DOP_Init();
 
 // TxRx Protocols
 int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len);
@@ -60,6 +66,8 @@ int DOP_Rx(uint8_t* byte_arr, uint16_t byte_len);
 // PDO Helper
 void DOP_AddPDOtoSync(uint8_t dod_id, uint16_t obj_id);
 void DOP_ClearPDOtoSync();
+
+void DOP_AddPDOSyncReq(uint8_t dod_id, uint16_t obj_id);
 
 // SDO Helper
 void DOP_AddSDOtoReq(uint8_t dod_id, uint16_t obj_id, void* data, uint16_t size);

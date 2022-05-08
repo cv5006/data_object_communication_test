@@ -1,7 +1,8 @@
 #include "data_object_protocol.h"
 
-
 cvector_vector_type(DOP_Header) pdo_to_sync;
+cvector_vector_type(DOP_Header) pdo_sync_req;
+
 cvector_vector_type(DOP_Header) sdos_to_req;
 cvector_vector_type(DOP_Header) sdos_to_res;
 
@@ -98,7 +99,7 @@ static int DOP_GetSDOargsSeq(DOP_Header* header, uint8_t* byte_arr)
 }
 
 
-static int DOP_SubPDOSeq(uint8_t* byte_arr)
+static int DOP_SyncPDOSeq(uint8_t* byte_arr)
 {    
     int byte_read = 0;
 
@@ -152,10 +153,49 @@ static int DOP_SDOSeq(uint8_t* byte_arr)
     return byte_read;
 }
 
+static void DOP_SDO_PDOSyncReq(SDOargs* req, SDOargs* res)
+{
+    int cursor = 0;
+    uint16_t* ids = (uint16_t*)req->data;
+    while (cursor < req->size) {
+        uint8_t dod_id = (uint8_t)ids[cursor++];
+        uint8_t obj_id = ids[cursor++];
+        DOP_AddPDOtoSync(dod_id, obj_id);
+    }
+
+    res->status = DATA_OBJECT_SDO_SUCC;
+}
+
+static void DOP_CallSDO_PDOSyncReq()
+{
+    if (pdo_sync_req == NULL) {
+        return;
+    }
+
+    int n_pdo = cvector_size(pdo_sync_req);
+    uint16_t req_data[n_pdo * 2];
+    for (int i = 0; i < n_pdo; ++i) {
+        req_data[2*i]   = pdo_sync_req[i].dod_id;
+        req_data[2*i+1] = pdo_sync_req[i].obj_id;
+    }
+    DOP_AddSDOtoReq(DATA_OBJECT_DEFAULT_DOD, DOP_SDO_SET_PDO_TO_SYNC, req_data, n_pdo * 2);
+    cvector_free(pdo_sync_req);
+    pdo_sync_req = NULL;
+}
+
+// Init
+void DOP_Init()
+{
+    DataObejct_InitDefaultDOD();
+    DataObejct_CreateSDO(DATA_OBJECT_DEFAULT_DOD, DOP_SDO_SET_PDO_TO_SYNC, "set_pdo_to_sync", UInt16, DOP_SDO_PDOSyncReq);
+}
 
 // TxRx Protocols
 int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len)
 {
+    /* Pre-process */
+    DOP_CallSDO_PDOSyncReq();
+
     int cursor = 0;
     
     /* PDO */
@@ -177,8 +217,6 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len)
                 return temp_cursor;
             }
         }
-    } else {
-        n_pdo = 0;
     }
 
     // Set # of PDOs
@@ -200,7 +238,7 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len)
                 cursor += temp_cursor;
                 ++n_sdo;
             } else if (temp_cursor < 0) {
-                return temp_cursor;
+                return DOP_FAULTY_PDO;
             }
         }
         // TODO: use more efficient way than vector
@@ -216,7 +254,7 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len)
                 cursor += temp_cursor;
                 ++n_sdo;
             } else if (temp_cursor < 0) {
-                return temp_cursor;
+                return DOP_FAULTY_SDO;
             }
         }
         cvector_free(sdos_to_req);
@@ -228,7 +266,7 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len)
 
     *byte_len = cursor;
 
-    return 0;
+    return DOP_SUCCESS;
 }
 
 int DOP_Rx(uint8_t* byte_arr, uint16_t byte_len)
@@ -237,50 +275,51 @@ int DOP_Rx(uint8_t* byte_arr, uint16_t byte_len)
 
     /* PDO */
     // Check PDO character
-    if (byte_arr[cursor] != DOP_CHAR_PDO) {
-        return -2;
-    }
-    cursor += DOP_OBJ_CHAR_SIZE;
+    if (byte_arr[cursor] == DOP_CHAR_PDO) {
+        cursor += DOP_OBJ_CHAR_SIZE;
 
-    // Get # of PDOs
-    uint8_t n_pdo = 0;
-    memcpy(&n_pdo, &byte_arr[cursor], DOP_OBJ_NUMS_SIZE);
-    cursor += DOP_OBJ_NUMS_SIZE;
+        // Get # of PDOs
+        uint8_t n_pdo = 0;
+        memcpy(&n_pdo, &byte_arr[cursor], DOP_OBJ_NUMS_SIZE);
+        cursor += DOP_OBJ_NUMS_SIZE;
 
-    if (n_pdo > 0) {
-        for (int i = 0; i < n_pdo; ++i) {
-            int temp_cursor = DOP_SubPDOSeq(&byte_arr[cursor]);
-            if (temp_cursor > 0) {
-                cursor += temp_cursor;
-            } else if (temp_cursor < 0) {
-                return temp_cursor;
+        // Sync PDOs
+        if (n_pdo > 0) {
+            for (int i = 0; i < n_pdo; ++i) {
+                int temp_cursor = DOP_SyncPDOSeq(&byte_arr[cursor]);
+                if (temp_cursor > 0) {
+                    cursor += temp_cursor;
+                } else if (temp_cursor < 0) {
+                    return DOP_FAULTY_PDO;
+                }
             }
         }
     }
 
     /* SDO */
     // Check SDO character
-    if (byte_arr[cursor] != DOP_CHAR_SDO) {
-        return -2;
-    }
-    cursor += DOP_OBJ_CHAR_SIZE;
+    if (byte_arr[cursor] == DOP_CHAR_SDO) {
+        cursor += DOP_OBJ_CHAR_SIZE;
 
-    // Get # of SDOs
-    uint16_t n_sdo = 0;
-    memcpy(&n_sdo, &byte_arr[cursor], DOP_OBJ_NUMS_SIZE);
-    cursor += DOP_OBJ_NUMS_SIZE;
-    if (n_sdo > 0) {
-        for (int i = 0; i < n_sdo; ++i) {            
-            int temp_cursor = DOP_SDOSeq(&byte_arr[cursor]);
-            if (temp_cursor > 0) {
-                cursor += temp_cursor;
-            } else if (temp_cursor < 0) {
-                return temp_cursor;
+        // Get # of SDOs
+        uint16_t n_sdo = 0;
+        memcpy(&n_sdo, &byte_arr[cursor], DOP_OBJ_NUMS_SIZE);
+        cursor += DOP_OBJ_NUMS_SIZE;
+
+        // Call & Respond SDOs
+        if (n_sdo > 0) {
+            for (int i = 0; i < n_sdo; ++i) {            
+                int temp_cursor = DOP_SDOSeq(&byte_arr[cursor]);
+                if (temp_cursor > 0) {
+                    cursor += temp_cursor;
+                } else if (temp_cursor < 0) {
+                    return DOP_FAULTY_SDO;
+                }
             }
         }
     }
 
-    return 0;
+    return DOP_SUCCESS;
 }
 
 
@@ -294,6 +333,12 @@ void DOP_ClearPDOtoSync()
 {
     cvector_free(pdo_to_sync);
     pdo_to_sync = NULL;
+}
+
+void DOP_AddPDOSyncReq(uint8_t dod_id, uint16_t obj_id)
+{
+    DOP_Header pdo = {dod_id, obj_id};
+    cvector_push_back(pdo_sync_req, pdo);
 }
 
 void DOP_AddSDOtoReq(uint8_t dod_id, uint16_t obj_id, void* data, uint16_t size)
