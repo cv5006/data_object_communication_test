@@ -223,9 +223,9 @@ void DOPTest()
     uint16_t len;
 
     printf("\n*.*.*. Tx1 .*.*.*\n");
-    DOP_AddPDOtoSync(dod1, pdo1_1);
-    DOP_AddPDOtoSync(dod1, pdo1_2);
-    DOP_AddPDOtoSync(dod2, pdo2_1);
+    DOP_AddPDOtoSend(dod1, pdo1_1);
+    DOP_AddPDOtoSend(dod1, pdo1_2);
+    DOP_AddPDOtoSend(dod2, pdo2_1);
 
     DOP_AddSDOtoReq(dod2, sdo2_1, data, N);
     DOP_AddSDOtoReq(dod2, sdo2_2, data, N);

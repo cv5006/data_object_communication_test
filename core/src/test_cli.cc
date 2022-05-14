@@ -50,8 +50,8 @@ int main(int argc, char* argv[])
     /* Set PDO to sync */
     cout << "Test #2: Set PDO List"<< endl;
     for (int i = 0; i < 10; ++i) { pdo1[i] = i; }
-    DOP_AddPDOSyncReq(1, 123);
-    DOP_AddPDOtoSync(1, 1);
+    DOP_AddPDOtoRecv(1, 123);
+    DOP_AddPDOtoSend(1, 1);
     TxRx(&srvsock, tx_buff, &tx_len, rx_buff, &rx_len);
     cout << "count: " << cnt << endl;
     cout << "----------------------------------\n" << endl;
@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
     /* Invalid PDO */
     cout << "Test #5: Request invalid PDO"<< endl;
     for (int i = 0; i < 10; ++i) { pdo1[i] = i*4; }
-    DOP_AddPDOtoSync(1, 456);
+    DOP_AddPDOtoSend(1, 456);
 
     TxRx(&srvsock, tx_buff, &tx_len, rx_buff, &rx_len);
     cout << "count: " << cnt << endl;

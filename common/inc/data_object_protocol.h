@@ -64,10 +64,10 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len);
 int DOP_Rx(uint8_t* byte_arr, uint16_t byte_len);
 
 // PDO Helper
-void DOP_AddPDOtoSync(uint8_t dod_id, uint16_t obj_id);
-void DOP_ClearPDOtoSync();
+void DOP_AddPDOtoSend(uint8_t dod_id, uint16_t obj_id);
+void DOP_ClearPDOtoSend();
 
-void DOP_AddPDOSyncReq(uint8_t dod_id, uint16_t obj_id);
+void DOP_AddPDOtoRecv(uint8_t dod_id, uint16_t obj_id);
 
 // SDO Helper
 void DOP_AddSDOtoReq(uint8_t dod_id, uint16_t obj_id, void* data, uint16_t size);

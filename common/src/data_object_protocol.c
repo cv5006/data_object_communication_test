@@ -1,7 +1,7 @@
 #include "data_object_protocol.h"
 
-cvector_vector_type(DOP_Header) pdo_to_sync;
-cvector_vector_type(DOP_Header) pdo_sync_req;
+cvector_vector_type(DOP_Header) pdo_to_send;
+cvector_vector_type(DOP_Header) pdo_to_recv;
 
 cvector_vector_type(DOP_Header) sdos_to_req;
 cvector_vector_type(DOP_Header) sdos_to_res;
@@ -160,7 +160,7 @@ static void DOP_SDO_PDOSyncReq(SDOargs* req, SDOargs* res)
     while (cursor < req->size) {
         uint8_t dod_id = (uint8_t)ids[cursor++];
         uint8_t obj_id = ids[cursor++];
-        DOP_AddPDOtoSync(dod_id, obj_id);
+        DOP_AddPDOtoSend(dod_id, obj_id);
     }
 
     res->status = DATA_OBJECT_SDO_SUCC;
@@ -168,26 +168,26 @@ static void DOP_SDO_PDOSyncReq(SDOargs* req, SDOargs* res)
 
 static void DOP_CallSDO_PDOSyncReq()
 {
-    if (pdo_sync_req == NULL) {
+    if (pdo_to_recv == NULL) {
         return;
     }
 
-    int n_pdo = cvector_size(pdo_sync_req);
+    int n_pdo = cvector_size(pdo_to_recv);
     uint16_t req_data[n_pdo * 2];
     for (int i = 0; i < n_pdo; ++i) {
-        req_data[2*i]   = pdo_sync_req[i].dod_id;
-        req_data[2*i+1] = pdo_sync_req[i].obj_id;
+        req_data[2*i]   = pdo_to_recv[i].dod_id;
+        req_data[2*i+1] = pdo_to_recv[i].obj_id;
     }
     DOP_AddSDOtoReq(DATA_OBJECT_DEFAULT_DOD, DOP_SDO_SET_PDO_TO_SYNC, req_data, n_pdo * 2);
-    cvector_free(pdo_sync_req);
-    pdo_sync_req = NULL;
+    cvector_free(pdo_to_recv);
+    pdo_to_recv = NULL;
 }
 
 // Init
 void DOP_Init()
 {
     DataObejct_InitDefaultDOD();
-    DataObejct_CreateSDO(DATA_OBJECT_DEFAULT_DOD, DOP_SDO_SET_PDO_TO_SYNC, "set_pdo_to_sync", UInt16, DOP_SDO_PDOSyncReq);
+    DataObejct_CreateSDO(DATA_OBJECT_DEFAULT_DOD, DOP_SDO_SET_PDO_TO_SYNC, "set_pdo_to_send", UInt16, DOP_SDO_PDOSyncReq);
 }
 
 // TxRx Protocols
@@ -207,9 +207,9 @@ int DOP_Tx(uint8_t* byte_arr, uint16_t* byte_len)
     int n_pdo_cursor = cursor;
     cursor += DOP_OBJ_NUMS_SIZE;
     uint8_t n_pdo = 0;
-    if (pdo_to_sync != NULL) {
-        for(int i = 0; i < cvector_size(pdo_to_sync); ++i) {
-            int temp_cursor = DOP_PubPDOSeq(&pdo_to_sync[i], &byte_arr[cursor]);
+    if (pdo_to_send != NULL) {
+        for(int i = 0; i < cvector_size(pdo_to_send); ++i) {
+            int temp_cursor = DOP_PubPDOSeq(&pdo_to_send[i], &byte_arr[cursor]);
             if (temp_cursor > 0) {
                 cursor += temp_cursor;
                 ++n_pdo;
@@ -323,22 +323,22 @@ int DOP_Rx(uint8_t* byte_arr, uint16_t byte_len)
 }
 
 
-void DOP_AddPDOtoSync(uint8_t dod_id, uint16_t obj_id)
+void DOP_AddPDOtoSend(uint8_t dod_id, uint16_t obj_id)
 {
     DOP_Header pdo = {dod_id, obj_id};
-    cvector_push_back(pdo_to_sync, pdo);
+    cvector_push_back(pdo_to_send, pdo);
 }
 
-void DOP_ClearPDOtoSync()
+void DOP_ClearPDOtoSend()
 {
-    cvector_free(pdo_to_sync);
-    pdo_to_sync = NULL;
+    cvector_free(pdo_to_send);
+    pdo_to_send = NULL;
 }
 
-void DOP_AddPDOSyncReq(uint8_t dod_id, uint16_t obj_id)
+void DOP_AddPDOtoRecv(uint8_t dod_id, uint16_t obj_id)
 {
     DOP_Header pdo = {dod_id, obj_id};
-    cvector_push_back(pdo_sync_req, pdo);
+    cvector_push_back(pdo_to_recv, pdo);
 }
 
 void DOP_AddSDOtoReq(uint8_t dod_id, uint16_t obj_id, void* data, uint16_t size)
