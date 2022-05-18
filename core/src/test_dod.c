@@ -145,7 +145,7 @@ void DataObjectTest()
     uint16_t len;
     
     pdo = DataObejct_FindPDO(dod_id, obj_id);
-    len = DataObject_PubPDO(pdo, (void*)buff);
+    len = DataObject_SendPDO(pdo, (void*)buff);
     
     PrintBuffer(buff, len);
 
@@ -160,7 +160,7 @@ void DataObjectTest()
     printf("Rx PDO from buffer\n");
     
     pdo = DataObejct_FindPDO(dod_id, obj_id);
-    len = DataObject_SubPDO(pdo, (void*)buff);
+    len = DataObject_RecvPDO(pdo, (void*)buff);
         
     printf("3. %s after rx: ", dods[dod_id]->pdo[dod_id].name);
     PrintData(data, N);

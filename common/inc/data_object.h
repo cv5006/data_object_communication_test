@@ -134,8 +134,8 @@ void DataObejct_CreateSDO(uint8_t dod_id, uint16_t obj_id, char* name, DataTypeE
 PDOStruct* DataObejct_FindPDO(uint8_t dod_id, uint16_t id);
 SDOStruct* DataObejct_FindSDO(uint8_t dod_id, uint16_t id);
 
-uint16_t DataObject_PubPDO(PDOStruct* pdo, void* data);
-uint16_t DataObject_SubPDO(PDOStruct* pdo, void* data);
+uint16_t DataObject_SendPDO(PDOStruct* pdo, void* data);
+uint16_t DataObject_RecvPDO(PDOStruct* pdo, void* data);
 
 void DataObject_SetSDOreq(uint8_t dod_id, uint16_t id, void* data, uint16_t size);
 SDOargs* DataObject_GetSDOres(uint8_t dod_id, uint16_t id);

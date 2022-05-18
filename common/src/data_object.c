@@ -161,7 +161,7 @@ SDOStruct* DataObejct_FindSDO(uint8_t dod_id, uint16_t id)
 
 
 // PDO Pub & Sub
-uint16_t DataObject_PubPDO(PDOStruct* pdo, void* data)
+uint16_t DataObject_SendPDO(PDOStruct* pdo, void* data)
 {    
     if (memcmp(pdo->addr, pdo->last_pub, pdo->bytelen) == 0) {
         // No Pub if data is same with last published one
@@ -174,7 +174,7 @@ uint16_t DataObject_PubPDO(PDOStruct* pdo, void* data)
 }
 
 
-uint16_t DataObject_SubPDO(PDOStruct* pdo, void* data)
+uint16_t DataObject_RecvPDO(PDOStruct* pdo, void* data)
 {
     memcpy(pdo->addr, data, pdo->bytelen);
     return pdo->bytelen;
@@ -253,7 +253,7 @@ uint16_t DataObejct_SetSDOargs(SDOStruct* sdo, SDOargs* args)
  |_||_| \___\___| |___/ \___/|___//__/
                                       
 */
-static void DataObject_FreePDO(uint8_t dod_id)
+static void FreePDO(uint8_t dod_id)
 {
     DataObjectDictionary* dod = dods[dod_id];
     for (int i = 0; i < cvector_size(dod->pdo); ++i) {
@@ -270,7 +270,7 @@ static void DataObject_FreePDO(uint8_t dod_id)
     cvector_free(dod->pdo);
 }
 
-static void DataObject_FreeSDO(uint8_t dod_id)
+static void FreeSDO(uint8_t dod_id)
 {
     DataObjectDictionary* dod = dods[dod_id];
     for (int i = 0; i < cvector_size(dod->sdo); ++i) {
@@ -291,8 +291,8 @@ void DataObject_FreeDODs()
 {
     for (int i = 0; i < dods_size; ++i) {
         if (dods[i] != NULL) {
-            DataObject_FreePDO(i);
-            DataObject_FreeSDO(i);
+            FreePDO(i);
+            FreeSDO(i);
             free(dods[i]->name);
             free(dods[i]);
             dods[i] = NULL;
