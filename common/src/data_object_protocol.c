@@ -113,6 +113,7 @@ static int RecvSDO_Protocol(uint8_t* byte_arr)
 
     uint16_t req_bytes = 0;
     SDOargs req = Bytes2SDOreq(byte_arr + byte_read, &req_bytes);
+    req.data_size = sdo->args.data_size; // Copy SDO info
     byte_read += req_bytes;
 
     uint16_t n_bytes = 0;
