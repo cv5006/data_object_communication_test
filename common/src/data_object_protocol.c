@@ -156,8 +156,8 @@ static void SetSendPDO_List(SDOargs* req, SDOargs* res)
     int cursor = 0;
     uint16_t* ids = (uint16_t*)req->data;
     while (cursor < req->size) {
-        uint8_t dod_id = (uint8_t)ids[cursor++];
-        uint8_t obj_id = ids[cursor++];
+        uint8_t  dod_id = (uint8_t)ids[cursor++];
+        uint16_t obj_id = ids[cursor++];
         DOP_AddPDOtoSend(dod_id, obj_id);
     }
 
